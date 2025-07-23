@@ -2,11 +2,13 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 from datetime import datetime, timedelta
 from functools import wraps
 import os
-import time  # ✅ HINZUFÜGEN
+import time
 import hashlib
 import secrets
 from database import *
 import pytz
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(16))
@@ -345,7 +347,14 @@ def aktivität_starten(projekt_id):
 @login_required
 def aktivität_beenden(projekt_id):
     try:
-        mitarbeiter = request.form['mitarbeiter']
+        print(f"Beende Aktivität für Projekt {projekt_id}")
+        
+        # Mitarbeiter aus Form holen
+        mitarbeiter = request.form.get('mitarbeiter')
+        if not mitarbeiter:
+            return jsonify({'status': 'error', 'message': 'Mitarbeiter fehlt'})
+        
+        print(f"Mitarbeiter: {mitarbeiter}")
         
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -357,25 +366,38 @@ def aktivität_beenden(projekt_id):
         ''', (projekt_id, mitarbeiter))
         
         aktive_sitzung = cursor.fetchone()
+        print(f"Aktive Sitzung gefunden: {aktive_sitzung}")
+        
         if not aktive_sitzung:
             conn.close()
             return jsonify({'status': 'error', 'message': 'Keine aktive Sitzung gefunden'})
 
-        # UTC Zeit verwenden
+        # Jetzige Zeit
         end_zeit = datetime.now(pytz.UTC)
         start_zeit = aktive_sitzung['start_zeit']
         
-        # Sicherstellen dass start_zeit timezone-aware ist
-        if start_zeit.tzinfo is None:
+        print(f"Start: {start_zeit}, End: {end_zeit}")
+        
+        # Timezone handling
+        if isinstance(start_zeit, str):
+            start_zeit = datetime.fromisoformat(start_zeit.replace('Z', '+00:00'))
+        elif start_zeit.tzinfo is None:
             start_zeit = pytz.UTC.localize(start_zeit)
         
-        dauer_minuten = max(0, int((end_zeit - start_zeit).total_seconds() / 60))
+        # Dauer berechnen
+        time_diff = end_zeit - start_zeit
+        dauer_minuten = max(1, int(time_diff.total_seconds() / 60))
+        
+        print(f"Dauer: {dauer_minuten} Minuten")
 
-        # Sitzung in beendete Sitzungen verschieben
+        # Sitzung in beendete Sitzungen einfügen
         cursor.execute('''
             INSERT INTO sitzungen (projekt_id, mitarbeiter, teilbereich, start_zeit, end_zeit, dauer_minuten)
             VALUES (%s, %s, %s, %s, %s, %s)
-        ''', (projekt_id, mitarbeiter, aktive_sitzung['teilbereich'], start_zeit, end_zeit, dauer_minuten))
+        ''', (projekt_id, mitarbeiter, aktive_sitzung['teilbereich'], 
+              start_zeit, end_zeit, dauer_minuten))
+        
+        print("Sitzung in DB eingefügt")
         
         # Aktive Sitzung löschen
         cursor.execute('''
@@ -383,25 +405,24 @@ def aktivität_beenden(projekt_id):
             WHERE projekt_id = %s AND mitarbeiter = %s
         ''', (projekt_id, mitarbeiter))
         
+        deleted_rows = cursor.rowcount
+        print(f"Aktive Sitzungen gelöscht: {deleted_rows}")
+        
         # Prüfen ob noch aktive Sitzungen vorhanden
         cursor.execute('SELECT COUNT(*) FROM aktive_sitzungen WHERE projekt_id = %s', (projekt_id,))
         aktive_count = cursor.fetchone()[0]
         
         if aktive_count == 0:
             cursor.execute('UPDATE projekte SET status = %s WHERE id = %s', ('pausiert', projekt_id))
+            print("Projekt-Status auf 'pausiert' gesetzt")
         
         conn.commit()
         conn.close()
-
-        return jsonify({
-            'status': 'success',
-            'dauer_text': berechne_dauer_text(dauer_minuten)
-        })
         
-    except Exception as e:
-        if 'conn' in locals():
-            conn.close()
-        return jsonify({'status': 'error', 'message': f'Server-Fehler: {str(e)}'})
+        # Dauer-Text erstellen
+        stunden = dauer_minuten // 60
+        minuten = dauer_minuten % 60
+        dauer_text = f"{stunden}h {minuten}m" if stunden > 0 else f"{
 
 @app.route('/projekt/<int:projekt_id>/beenden', methods=['POST'])
 @login_required
