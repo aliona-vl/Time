@@ -248,11 +248,23 @@ def projekt_details(projekt_id):
     
     aktive_sitzungen = {}
     for sitzung in cursor.fetchall():
+        # Start-Zeit korrekt für JavaScript formatieren
+        start_zeit = sitzung['start_zeit']
+        if isinstance(start_zeit, datetime):
+            if start_zeit.tzinfo is None:
+                # Keine Timezone = UTC annehmen
+                start_zeit = pytz.UTC.localize(start_zeit)
+            start_iso = start_zeit.isoformat()
+        else:
+            # String-Format zu ISO mit Z-Suffix
+            start_iso = str(start_zeit).replace(' ', 'T') + 'Z'
+
         aktive_sitzungen[sitzung['mitarbeiter']] = {
-    'teilbereich': sitzung['teilbereich'],
-    'start': sitzung['start_zeit'].isoformat(),
-    'dauer': berechne_aktuelle_dauer(sitzung['start_zeit'])
-}
+            'teilbereich': sitzung['teilbereich'],
+            'start': start_iso,
+            'dauer': berechne_aktuelle_dauer(sitzung['start_zeit'])
+        }
+    
     projekt['aktive_sitzungen'] = aktive_sitzungen
     
     # Teilbereiche laden
@@ -299,7 +311,6 @@ def projekt_details(projekt_id):
                          teilbereiche=TEILBEREICHE,
                          mitarbeiter=mitarbeiter,
                          benutzer_name=session['benutzer_name'])
-
 @app.route('/projekt/<int:projekt_id>/aktivität/starten', methods=['POST'])
 @login_required
 def aktivität_starten(projekt_id):
@@ -343,116 +354,7 @@ def aktivität_starten(projekt_id):
 
     return jsonify({'status': 'success'})
 
-@app.route('/projekt/<int:projekt_id>/aktivität/beenden', methods=['POST'])
-@login_required
-def aktivität_beenden(projekt_id):
-    try:
-        print(f"Beende Aktivität für Projekt {projekt_id}")
-        
-        # Mitarbeiter aus Form holen
-        mitarbeiter = request.form.get('mitarbeiter')
-        if not mitarbeiter:
-            return jsonify({'status': 'error', 'message': 'Mitarbeiter fehlt'})
-        
-        print(f"Mitarbeiter: {mitarbeiter}")
-        
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # Aktive Sitzung finden
-        cursor.execute('''
-            SELECT teilbereich, start_zeit FROM aktive_sitzungen 
-            WHERE projekt_id = %s AND mitarbeiter = %s
-        ''', (projekt_id, mitarbeiter))
-        
-        aktive_sitzung = cursor.fetchone()
-        print(f"Aktive Sitzung gefunden: {aktive_sitzung}")
-        
-        if not aktive_sitzung:
-            conn.close()
-            return jsonify({'status': 'error', 'message': 'Keine aktive Sitzung gefunden'})
 
-        # Jetzige Zeit
-        end_zeit = datetime.now(pytz.UTC)
-        start_zeit = aktive_sitzung['start_zeit']
-        
-        print(f"Start: {start_zeit}, End: {end_zeit}")
-        
-        # Timezone handling
-        if isinstance(start_zeit, str):
-            start_zeit = datetime.fromisoformat(start_zeit.replace('Z', '+00:00'))
-        elif start_zeit.tzinfo is None:
-            start_zeit = pytz.UTC.localize(start_zeit)
-        
-        # Dauer berechnen
-        time_diff = end_zeit - start_zeit
-        dauer_minuten = max(1, int(time_diff.total_seconds() / 60))
-        
-        print(f"Dauer: {dauer_minuten} Minuten")
-
-        # Sitzung in beendete Sitzungen einfügen
-        cursor.execute('''
-            INSERT INTO sitzungen (projekt_id, mitarbeiter, teilbereich, start_zeit, end_zeit, dauer_minuten)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        ''', (projekt_id, mitarbeiter, aktive_sitzung['teilbereich'], 
-              start_zeit, end_zeit, dauer_minuten))
-        
-        print("Sitzung in DB eingefügt")
-        
-        # Aktive Sitzung löschen
-        cursor.execute('''
-            DELETE FROM aktive_sitzungen 
-            WHERE projekt_id = %s AND mitarbeiter = %s
-        ''', (projekt_id, mitarbeiter))
-        
-        deleted_rows = cursor.rowcount
-        print(f"Aktive Sitzungen gelöscht: {deleted_rows}")
-        
-        # Prüfen ob noch aktive Sitzungen vorhanden
-        cursor.execute('SELECT COUNT(*) FROM aktive_sitzungen WHERE projekt_id = %s', (projekt_id,))
-        aktive_count = cursor.fetchone()[0]
-        
-        if aktive_count == 0:
-            cursor.execute('UPDATE projekte SET status = %s WHERE id = %s', ('pausiert', projekt_id))
-            print("Projekt-Status auf 'pausiert' gesetzt")
-        
-        conn.commit()
-        conn.close()
-        
-        # Dauer-Text erstellen
-        stunden = dauer_minuten // 60
-        minuten = dauer_minuten % 60
-        if stunden > 0:
-            dauer_text = f"{stunden}h {minuten}m"
-        else:
-            dauer_text = f"{minuten}m"
-
-        print(f"Erfolgreich beendet: {dauer_text}")
-        
-        return jsonify({
-            'status': 'success',
-            'message': 'Aktivität beendet',
-            'dauer_text': dauer_text,
-            'dauer_minuten': dauer_minuten
-        })
-        
-    except Exception as e:
-        print(f"FEHLER in aktivität_beenden: {str(e)}")
-        print(f"Exception type: {type(e).__name__}")
-        import traceback
-        traceback.print_exc()
-        
-        if 'conn' in locals():
-            try:
-                conn.close()
-            except:
-                pass
-                
-        return jsonify({
-            'status': 'error', 
-            'message': f'Server-Fehler: {str(e)}',
-            'error_type': type(e).__name__
-        })
 @app.route('/projekt/<int:projekt_id>/aktivität/beenden', methods=['POST'])
 @login_required
 def aktivität_beenden(projekt_id):
