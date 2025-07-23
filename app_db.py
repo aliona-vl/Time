@@ -83,6 +83,31 @@ def german_date_filter(utc_string):
         return "01.01."
 os.environ['TZ'] = 'Europe/Berlin'
 time.tzset()
+def berechne_aktuelle_dauer(start_zeit):
+    """Berechnet die aktuelle Dauer einer laufenden Sitzung"""
+    try:
+        if isinstance(start_zeit, str):
+            start = datetime.fromisoformat(start_zeit.replace('Z', '+00:00'))
+        else:
+            start = start_zeit
+        
+        jetzt = datetime.now()
+        if start.tzinfo is not None:
+            jetzt = datetime.now(pytz.UTC)
+        
+        diff = jetzt - start
+        total_minuten = max(0, int(diff.total_seconds() / 60))
+        
+        stunden = total_minuten // 60
+        minuten = total_minuten % 60
+        
+        return f"{stunden}h {minuten}m"
+    except:
+        return "0h 0m"
+
+@app.template_filter('aktuelle_dauer')
+def aktuelle_dauer_filter(start_zeit):
+    return berechne_aktuelle_dauer(start_zeit)
 @app.route('/')
 def index():
     if 'benutzer_email' in session:
@@ -222,9 +247,10 @@ def projekt_details(projekt_id):
     aktive_sitzungen = {}
     for sitzung in cursor.fetchall():
         aktive_sitzungen[sitzung['mitarbeiter']] = {
-            'teilbereich': sitzung['teilbereich'],
-            'start': sitzung['start_zeit'].isoformat()
-        }
+    'teilbereich': sitzung['teilbereich'],
+    'start': sitzung['start_zeit'].isoformat(),
+    'dauer': berechne_aktuelle_dauer(sitzung['start_zeit'])
+}
     projekt['aktive_sitzungen'] = aktive_sitzungen
     
     # Teilbereiche laden
@@ -288,7 +314,7 @@ def aktivität_starten(projekt_id):
         conn.close()
         return jsonify({'status': 'error', 'message': f'{mitarbeiter} arbeitet bereits'})
 
-    jetzt = datetime.now()
+    jetzt = datetime.now(pytz.UTC)
     
     # Aktive Sitzung einfügen
     cursor.execute('''
