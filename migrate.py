@@ -114,12 +114,13 @@ def migrate_json_to_db():
             
             print(f"✅ {len(projekte_data)} Projekte migriert")
             
-            # Auto-increment für Projekte korrekt setzen
-            cursor.execute('SELECT MAX(id) FROM projekte')
-            max_id_result = cursor.fetchone()
-            if max_id_result and max_id_result[0]:
-                max_id = max_id_result[0]
-                cursor.execute(f'ALTER SEQUENCE projekte_id_seq RESTART WITH {max_id + 1}')
+        cursor.execute('SELECT MAX(id) FROM projekte')
+        max_id_result = cursor.fetchone()
+        if max_id_result and max_id_result[0] is not None:
+         max_id = max_id_result[0]
+         cursor.execute(f'ALTER SEQUENCE projekte_id_seq RESTART WITH {max_id + 1}') 
+        else:
+         cursor.execute('ALTER SEQUENCE projekte_id_seq RESTART WITH 1')
         
         conn.commit()
         print("🎉 Migration erfolgreich abgeschlossen!")
