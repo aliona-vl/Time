@@ -114,32 +114,32 @@ def migrate_json_to_db():
             
             print(f"✅ {len(projekte_data)} Projekte migriert")
             
+# Auto-increment für Projekte korrekt setzen
         cursor.execute('SELECT MAX(id) FROM projekte')
         max_id_result = cursor.fetchone()
-        if max_id_result and max_id_result[0] is not None:
-         max_id = max_id_result[0]
-         cursor.execute(f'ALTER SEQUENCE projekte_id_seq RESTART WITH {max_id + 1}') 
-        else:
-         cursor.execute('ALTER SEQUENCE projekte_id_seq RESTART WITH 1')
-        
-        conn.commit()
-        print("🎉 Migration erfolgreich abgeschlossen!")
-        
+        try:
+            max_id = max_id_result['max'] if max_id_result and max_id_result['max'] is not None else 0
+            cursor.execute(f'ALTER SEQUENCE projekte_id_seq RESTART WITH {max_id + 1}')
+        except (KeyError, TypeError):
+            cursor.execute('ALTER SEQUENCE projekte_id_seq RESTART WITH 1')
+
         # Verifikation
         cursor.execute('SELECT COUNT(*) FROM benutzer')
-        benutzer_count = cursor.fetchone()[0]
+        benutzer_count = cursor.fetchone()['count']
         cursor.execute('SELECT COUNT(*) FROM projekte')
-        projekte_count = cursor.fetchone()[0]
+        projekte_count = cursor.fetchone()['count']
         cursor.execute('SELECT COUNT(*) FROM sitzungen')
-        sitzungen_count = cursor.fetchone()[0]
+        sitzungen_count = cursor.fetchone()['count']
         cursor.execute('SELECT COUNT(*) FROM aktive_sitzungen')
-        aktive_count = cursor.fetchone()[0]
-        
+        aktive_count = cursor.fetchone()['count']
+
         print(f"📊 Migration Ergebnis:")
         print(f"   👤 {benutzer_count} Benutzer")
         print(f"   📋 {projekte_count} Projekte")
         print(f"   ⏱️ {sitzungen_count} beendete Sitzungen")
         print(f"   🔄 {aktive_count} aktive Sitzungen")
+        
+        conn.commit()
         
     except Exception as e:
         print(f"❌ Fehler bei Migration: {e}")
