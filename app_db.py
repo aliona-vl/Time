@@ -344,52 +344,64 @@ def aktivität_starten(projekt_id):
 @app.route('/projekt/<int:projekt_id>/aktivität/beenden', methods=['POST'])
 @login_required
 def aktivität_beenden(projekt_id):
-    mitarbeiter = request.form['mitarbeiter']
+    try:
+        mitarbeiter = request.form['mitarbeiter']
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Aktive Sitzung finden
+        cursor.execute('''
+            SELECT teilbereich, start_zeit FROM aktive_sitzungen 
+            WHERE projekt_id = %s AND mitarbeiter = %s
+        ''', (projekt_id, mitarbeiter))
+        
+        aktive_sitzung = cursor.fetchone()
+        if not aktive_sitzung:
+            conn.close()
+            return jsonify({'status': 'error', 'message': 'Keine aktive Sitzung gefunden'})
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    # Aktive Sitzung finden
-    cursor.execute('''
-        SELECT teilbereich, start_zeit FROM aktive_sitzungen 
-        WHERE projekt_id = %s AND mitarbeiter = %s
-    ''', (projekt_id, mitarbeiter))
-    
-    aktive_sitzung = cursor.fetchone()
-    if not aktive_sitzung:
+        # UTC Zeit verwenden
+        end_zeit = datetime.now(pytz.UTC)
+        start_zeit = aktive_sitzung['start_zeit']
+        
+        # Sicherstellen dass start_zeit timezone-aware ist
+        if start_zeit.tzinfo is None:
+            start_zeit = pytz.UTC.localize(start_zeit)
+        
+        dauer_minuten = max(0, int((end_zeit - start_zeit).total_seconds() / 60))
+
+        # Sitzung in beendete Sitzungen verschieben
+        cursor.execute('''
+            INSERT INTO sitzungen (projekt_id, mitarbeiter, teilbereich, start_zeit, end_zeit, dauer_minuten)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        ''', (projekt_id, mitarbeiter, aktive_sitzung['teilbereich'], start_zeit, end_zeit, dauer_minuten))
+        
+        # Aktive Sitzung löschen
+        cursor.execute('''
+            DELETE FROM aktive_sitzungen 
+            WHERE projekt_id = %s AND mitarbeiter = %s
+        ''', (projekt_id, mitarbeiter))
+        
+        # Prüfen ob noch aktive Sitzungen vorhanden
+        cursor.execute('SELECT COUNT(*) FROM aktive_sitzungen WHERE projekt_id = %s', (projekt_id,))
+        aktive_count = cursor.fetchone()[0]
+        
+        if aktive_count == 0:
+            cursor.execute('UPDATE projekte SET status = %s WHERE id = %s', ('pausiert', projekt_id))
+        
+        conn.commit()
         conn.close()
-        return jsonify({'status': 'error', 'message': 'Keine aktive Sitzung'})
 
-    end_zeit = datetime.now()
-    start_zeit = aktive_sitzung['start_zeit']
-    dauer_minuten = int((end_zeit - start_zeit).total_seconds() / 60)
-
-    # Sitzung in beendete Sitzungen verschieben
-    cursor.execute('''
-        INSERT INTO sitzungen (projekt_id, mitarbeiter, teilbereich, start_zeit, end_zeit, dauer_minuten)
-        VALUES (%s, %s, %s, %s, %s, %s)
-    ''', (projekt_id, mitarbeiter, aktive_sitzung['teilbereich'], start_zeit, end_zeit, dauer_minuten))
-    
-    # Aktive Sitzung löschen
-    cursor.execute('''
-        DELETE FROM aktive_sitzungen 
-        WHERE projekt_id = %s AND mitarbeiter = %s
-    ''', (projekt_id, mitarbeiter))
-    
-    # Prüfen ob noch aktive Sitzungen vorhanden
-    cursor.execute('SELECT COUNT(*) FROM aktive_sitzungen WHERE projekt_id = %s', (projekt_id,))
-    aktive_count = cursor.fetchone()[0]
-    
-    if aktive_count == 0:
-        cursor.execute('UPDATE projekte SET status = %s WHERE id = %s', ('pausiert', projekt_id))
-    
-    conn.commit()
-    conn.close()
-
-    return jsonify({
-        'status': 'success',
-        'dauer_text': berechne_dauer_text(dauer_minuten)
-    })
+        return jsonify({
+            'status': 'success',
+            'dauer_text': berechne_dauer_text(dauer_minuten)
+        })
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.close()
+        return jsonify({'status': 'error', 'message': f'Server-Fehler: {str(e)}'})
 
 @app.route('/projekt/<int:projekt_id>/beenden', methods=['POST'])
 @login_required
