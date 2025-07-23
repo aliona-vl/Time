@@ -420,14 +420,39 @@ def aktivität_beenden(projekt_id):
         conn.close()
         
         # Dauer-Text erstellen
-       # Dauer-Text erstellen
-stunden = dauer_minuten // 60
-minuten = dauer_minuten % 60
-if stunden > 0:
-    dauer_text = f"{stunden}h {minuten}m"
-else:
-    dauer_text = f"{minuten}m"
+        stunden = dauer_minuten // 60
+        minuten = dauer_minuten % 60
+        if stunden > 0:
+            dauer_text = f"{stunden}h {minuten}m"
+        else:
+            dauer_text = f"{minuten}m"
 
+        print(f"Erfolgreich beendet: {dauer_text}")
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Aktivität beendet',
+            'dauer_text': dauer_text,
+            'dauer_minuten': dauer_minuten
+        })
+        
+    except Exception as e:
+        print(f"FEHLER in aktivität_beenden: {str(e)}")
+        print(f"Exception type: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
+        
+        if 'conn' in locals():
+            try:
+                conn.close()
+            except:
+                pass
+                
+        return jsonify({
+            'status': 'error', 
+            'message': f'Server-Fehler: {str(e)}',
+            'error_type': type(e).__name__
+        })
 @app.route('/projekt/<int:projekt_id>/beenden', methods=['POST'])
 @login_required
 def projekt_beenden(projekt_id):
