@@ -5,7 +5,9 @@ from datetime import datetime
 
 def get_db_connection():
     """PostgreSQL Verbindung"""
-    DATABASE_URL = os.environ.get('DATABASE_URL')
+    # Temporärer Fix - ersetzen Sie mit Ihrer echten URL
+    DATABASE_URL = "postgresql://postgres:PEnwkBlmATebcaMQTHGzrvXZFUoATTCY@postgres.railway.internal:5432/railway"
+
     if not DATABASE_URL:
         # Lokale Entwicklung
         DATABASE_URL = "postgresql://localhost/rausch_local"
