@@ -181,29 +181,7 @@ def erstelle_projekt_bericht(projekt):
         'teilbereiche': teilbereich_stats,
         'mitarbeiter': mitarbeiter_stats
     }
-@app.template_filter('german_time')
-def german_time_filter(utc_string):
-    try:
-        utc_time = datetime.fromisoformat(utc_string.replace('Z', '+00:00'))
-        german_tz = pytz.timezone('Europe/Berlin')
-        german_time = utc_time.astimezone(german_tz)
-        return german_time.strftime('%H:%M')
-    except:
-        return utc_string[11:16]
-@app.template_filter('german_date')
-def german_date_filter(utc_string):
-    """Konvertiert UTC Datum zu deutschem Datum (DD.MM.)"""
-    try:
-        utc_time = datetime.fromisoformat(utc_string.replace('Z', '+00:00'))
-        german_tz = pytz.timezone('Europe/Berlin')
-        german_time = utc_time.astimezone(german_tz)
-        return german_time.strftime('%d.%m.')
-    except:
-        if isinstance(utc_string, str) and len(utc_string) > 10:
-            return f"{utc_string[8:10]}.{utc_string[5:7]}."
-        return "01.01."
-os.environ['TZ'] = 'Europe/Berlin'
-time.tzset()
+
 
 @app.route('/')
 def index():
