@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 from datetime import datetime, timedelta
 from functools import wraps
 import os
+import time  # ✅ HINZUFÜGEN
 import hashlib
 import secrets
 from database import *
