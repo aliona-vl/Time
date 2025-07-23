@@ -655,9 +655,9 @@
                         <div class="verlauf-dauer">
                             {% if aktivität.typ == 'aktiv' %}
                                 <span class="live-timer" data-start="{{ aktivität.start }}">Läuft...</span>
-                                <button class="stopp-btn" onclick="aktivitätBeenden('{{ aktivität.mitarbeiter }}')">
-                                    Stop
-                                </button>
+                               <button class="stopp-btn" onclick="aktivitätBeenden('{{ aktivität.mitarbeiter }}'); return false;">
+    🛑 Stop
+</button>
                             {% else %}
                                 <span>
                                     {% if aktivität.dauer_minuten < 60 %}
@@ -777,27 +777,46 @@
         }
 
         function aktivitätBeenden(mitarbeiter) {
-            fetch(`/projekt/{{ projekt.id }}/aktivität/beenden`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: `mitarbeiter=${encodeURIComponent(mitarbeiter)}`
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    showAlert('✅ Aktivität beendet!', 'success');
-                    setTimeout(() => location.reload(), 1500);
-                } else {
-                    showAlert('❌ ' + (data.message || 'Fehler beim Beenden'));
-                }
-            })
-            .catch(error => {
-                showAlert('❌ Netzwerk-Fehler');
-            });
+    // Debug-Log hinzufügen
+    console.log('Stop Button geklickt für:', mitarbeiter);
+    
+    // Button während Request deaktivieren
+    const stopButton = event.target;
+    stopButton.disabled = true;
+    stopButton.textContent = '...';
+    
+    fetch(`/projekt/{{ projekt.id }}/aktivität/beenden`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `mitarbeiter=${encodeURIComponent(mitarbeiter)}`
+    })
+    .then(response => {
+        console.log('Response Status:', response.status);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
         }
-
+        return response.json();
+    })
+    .then(data => {
+        console.log('Response Data:', data);
+        if (data.status === 'success') {
+            showAlert('✅ Aktivität beendet!', 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showAlert('❌ ' + (data.message || 'Fehler beim Beenden'));
+            stopButton.disabled = false;
+            stopButton.textContent = 'Stop';
+        }
+    })
+    .catch(error => {
+        console.error('Fetch Error:', error);
+        showAlert('❌ Netzwerk-Fehler: ' + error.message);
+        stopButton.disabled = false;
+        stopButton.textContent = 'Stop';
+    });
+}
         function projektBeenden() {
             openModal('projektBeendenModal');
         }
@@ -844,6 +863,23 @@
         // Initialize
         updateLiveTimers();
         setInterval(updateLiveTimers, 30000);
+        // Event Delegation für dynamische Stop Buttons
+document.addEventListener('click', function(event) {
+    if (event.target.classList.contains('stopp-btn')) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        const mitarbeiter = event.target.getAttribute('data-mitarbeiter') || 
+                           event.target.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
+        
+        if (mitarbeiter) {
+            aktivitätBeenden(mitarbeiter);
+        } else {
+            console.error('Mitarbeiter nicht gefunden');
+            showAlert('❌ Fehler: Mitarbeiter nicht identifiziert');
+        }
+    }
+});
     </script>
 </body>
 </html>
