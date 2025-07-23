@@ -4,17 +4,25 @@ from datetime import datetime
 from database import get_db_connection, init_database
 
 def migrate_json_to_db():
-    """Migriert ALLE JSON-Daten automatisch zur PostgreSQL"""
-    
-    print("🚀 Starte Migration von JSON zu PostgreSQL...")
-    
-    # 1. Datenbank-Tabellen erstellen
-    init_database()
+    """Migriert JSON-Daten NUR EINMAL zur PostgreSQL"""
     
     conn = get_db_connection()
     cursor = conn.cursor()
     
     try:
+        # ✅ PRÜFEN OB MIGRATION BEREITS LIEF
+        cursor.execute("SELECT COUNT(*) FROM benutzer")
+        benutzer_count = cursor.fetchone()['count']
+        
+        if benutzer_count > 0:
+            print("✅ Migration bereits durchgeführt - überspringe...")
+            return
+        
+        print("🚀 Starte Migration von JSON zu PostgreSQL...")
+        
+        # 1. Datenbank-Tabellen erstellen
+        init_database()
+        
         # 2. BENUTZER migrieren
         if os.path.exists('benutzer.json'):
             print("📁 Migriere Benutzer...")
@@ -61,14 +69,13 @@ def migrate_json_to_db():
                 ''', (kunde,))
             print(f"✅ {len(kunden_data)} Kunden migriert")
         
-        # 5. PROJEKTE migrieren (das Wichtigste!)
+        # 5. PROJEKTE migrieren
         if os.path.exists('projekte.json'):
             print("📋 Migriere Projekte...")
             with open('projekte.json', 'r', encoding='utf-8') as f:
                 projekte_data = json.load(f)
             
             for projekt in projekte_data:
-                # Projekt einfügen mit expliziter ID
                 cursor.execute('''
                     INSERT INTO projekte (id, name, kunde, ersteller, status, erstellt_am, erster_start, letzter_start, beendet_am)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
@@ -114,14 +121,14 @@ def migrate_json_to_db():
             
             print(f"✅ {len(projekte_data)} Projekte migriert")
             
-# Auto-increment für Projekte korrekt setzen
-        cursor.execute('SELECT MAX(id) FROM projekte')
-        max_id_result = cursor.fetchone()
-        try:
-            max_id = max_id_result['max'] if max_id_result and max_id_result['max'] is not None else 0
-            cursor.execute(f'ALTER SEQUENCE projekte_id_seq RESTART WITH {max_id + 1}')
-        except (KeyError, TypeError):
-            cursor.execute('ALTER SEQUENCE projekte_id_seq RESTART WITH 1')
+            # Auto-increment für Projekte korrekt setzen
+            cursor.execute('SELECT MAX(id) FROM projekte')
+            max_id_result = cursor.fetchone()
+            try:
+                max_id = max_id_result['max'] if max_id_result and max_id_result['max'] is not None else 0
+                cursor.execute(f'ALTER SEQUENCE projekte_id_seq RESTART WITH {max_id + 1}')
+            except (KeyError, TypeError):
+                cursor.execute('ALTER SEQUENCE projekte_id_seq RESTART WITH 1')
 
         # Verifikation
         cursor.execute('SELECT COUNT(*) FROM benutzer')
@@ -140,6 +147,7 @@ def migrate_json_to_db():
         print(f"   🔄 {aktive_count} aktive Sitzungen")
         
         conn.commit()
+        print("✅ Migration erfolgreich abgeschlossen!")
         
     except Exception as e:
         print(f"❌ Fehler bei Migration: {e}")
@@ -147,6 +155,3 @@ def migrate_json_to_db():
         raise e
     finally:
         conn.close()
-
-if __name__ == '__main__':
-    migrate_json_to_db()
