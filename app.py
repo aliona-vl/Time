@@ -7,9 +7,9 @@ import hashlib
 import secrets
 import io
 import time
+# In app.py ganz oben nach den imports:
+import pytz
 
-os.environ['TZ'] = 'Europe/Berlin'
-time.tzset()
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
@@ -181,6 +181,17 @@ def erstelle_projekt_bericht(projekt):
         'teilbereiche': teilbereich_stats,
         'mitarbeiter': mitarbeiter_stats
     }
+@app.template_filter('german_time')
+def german_time_filter(utc_string):
+    try:
+        utc_time = datetime.fromisoformat(utc_string.replace('Z', '+00:00'))
+        german_tz = pytz.timezone('Europe/Berlin')
+        german_time = utc_time.astimezone(german_tz)
+        return german_time.strftime('%H:%M')
+    except:
+        return utc_string[11:16]
+os.environ['TZ'] = 'Europe/Berlin'
+time.tzset()
 
 @app.route('/')
 def index():

@@ -557,12 +557,12 @@
 
             <div class="projekt-info-grid">
                 <div class="info-card">
-                    <div class="info-time">{{ projekt.erstellt_am[11:16] }}</div>
+                    <div class="info-time">{{ projekt.erstellt_am | german_time }}</div>
                     <div class="info-label">Erstellt um</div>
                 </div>
                 
                 <div class="info-card">
-                    <div class="info-date">{{ projekt.erstellt_am[8:10] }}.{{ projekt.erstellt_am[5:7] }}.</div>
+                    <div class="info-date">{{ projekt.erstellt_am | german_date }}</div>
                     <div class="info-label">Erstellt am</div>
                 </div>
             </div>
@@ -646,9 +646,9 @@
                         
                         <div class="verlauf-zeit">
                             {% if aktivität.typ == 'aktiv' %}
-                                ⏱️ Seit: {{ aktivität.start[11:16] }} Uhr
+                                ⏱️ Seit: {{ aktivität.start | german_time }} Uhr
                             {% else %}
-                                🕐 {{ aktivität.start[11:16] }} - {{ aktivität.end[11:16] }} Uhr
+                                🕐 {{ aktivität.start | german_time }} - {{ aktivität.end | german_time }} Uhr
                             {% endif %}
                         </div>
                         
