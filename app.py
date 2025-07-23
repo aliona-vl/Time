@@ -6,6 +6,10 @@ import os
 import hashlib
 import secrets
 import io
+import time
+
+os.environ['TZ'] = 'Europe/Berlin'
+time.tzset()
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
