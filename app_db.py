@@ -420,9 +420,13 @@ def aktivität_beenden(projekt_id):
         conn.close()
         
         # Dauer-Text erstellen
-        stunden = dauer_minuten // 60
-        minuten = dauer_minuten % 60
-        dauer_text = f"{stunden}h {minuten}m" if stunden > 0 else f"{
+       # Dauer-Text erstellen
+stunden = dauer_minuten // 60
+minuten = dauer_minuten % 60
+if stunden > 0:
+    dauer_text = f"{stunden}h {minuten}m"
+else:
+    dauer_text = f"{minuten}m"
 
 @app.route('/projekt/<int:projekt_id>/beenden', methods=['POST'])
 @login_required
