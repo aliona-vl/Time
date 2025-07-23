@@ -1,0 +1,455 @@
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from datetime import datetime, timedelta
+from functools import wraps
+import os
+import hashlib
+import secrets
+from database import *
+
+app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(16))
+
+# Team-Code Definition
+TEAM_CODE = 'RAUSCH2025'
+TEILBEREICHE = ['besprechung', 'zeichnung', 'aufmass']
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'benutzer_email' not in session:
+            return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def berechne_dauer_text(minuten):
+    """Konvertiert Minuten in lesbaren Text"""
+    if minuten < 60:
+        return f"{minuten}m"
+
+    stunden = minuten // 60
+    rest_minuten = minuten % 60
+
+    if stunden < 24:
+        return f"{stunden}h {rest_minuten}m" if rest_minuten > 0 else f"{stunden}h"
+
+    tage = stunden // 24
+    rest_stunden = stunden % 24
+
+    if tage < 7:
+        result = f"{tage} Tag{'e' if tage > 1 else ''}"
+        if rest_stunden > 0:
+            result += f" {rest_stunden}h"
+        if rest_minuten > 0:
+            result += f" {rest_minuten}m"
+        return result
+
+    wochen = tage // 7
+    rest_tage = tage % 7
+
+    result = f"{wochen} Woche{'n' if wochen > 1 else ''}"
+    if rest_tage > 0:
+        result += f" {rest_tage} Tag{'e' if rest_tage > 1 else ''}"
+    if rest_stunden > 0:
+        result += f" {rest_stunden}h"
+    if rest_minuten > 0:
+        result += f" {rest_minuten}m"
+
+    return result
+
+@app.route('/')
+def index():
+    if 'benutzer_email' in session:
+        return redirect(url_for('dashboard'))
+    return render_template('index.html')
+
+@app.route('/registrieren', methods=['POST'])
+def registrieren():
+    email = request.form['email'].strip().lower()
+    password = request.form['password']
+    team_code = request.form.get('team_code', '').strip()
+
+    if len(password) < 8:
+        return jsonify({'status': 'error', 'message': 'Passwort muss mindestens 8 Zeichen haben'})
+
+    benutzer = load_benutzer()
+    if email in benutzer:
+        return jsonify({'status': 'error', 'message': 'E-Mail bereits registriert'})
+
+    if not team_code:
+        return jsonify({'status': 'error', 'message': 'Team-Code ist erforderlich'})
+
+    if team_code != TEAM_CODE:
+        return jsonify({'status': 'error', 'message': 'Ungültiger Team-Code'})
+
+    # Benutzer speichern
+    benutzer_data = {
+        'password_hash': hash_password(password),
+        'registriert_am': datetime.now().isoformat(),
+        'name': email.split('@')[0].title(),
+        'team_code_verwendet': team_code
+    }
+    
+    save_benutzer(email, benutzer_data)
+
+    session['benutzer_email'] = email
+    session['benutzer_name'] = benutzer_data['name']
+
+    return jsonify({
+        'status': 'success',
+        'sofort_zugriff': True,
+        'message': 'Willkommen im Team!'
+    })
+
+@app.route('/login', methods=['POST'])
+def login():
+    email = request.form['email'].strip().lower()
+    password = request.form['password']
+
+    benutzer = load_benutzer()
+    if email not in benutzer or benutzer[email]['password_hash'] != hash_password(password):
+        return jsonify({'status': 'error', 'message': 'Ungültige Anmeldedaten'})
+
+    session['benutzer_email'] = email
+    session['benutzer_name'] = benutzer[email]['name']
+    return jsonify({'status': 'success'})
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect('/')
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    projekte = load_projekte_for_user(session['benutzer_email'])
+    mitarbeiter = load_mitarbeiter()
+    kunden = load_kunden()
+
+    return render_template('dashboard.html',
+                         projekte=projekte,
+                         teilbereiche=TEILBEREICHE,
+                         mitarbeiter=mitarbeiter,
+                         kunden=kunden,
+                         benutzer_name=session['benutzer_name'])
+
+@app.route('/projekt/neu', methods=['POST'])
+@login_required
+def neues_projekt():
+    name = request.form['name'].strip()
+    kunde = request.form['kunde'].strip()
+    if not name:
+        return jsonify({'status': 'error', 'message': 'Projektname erforderlich'})
+    if not kunde:
+        return jsonify({'status': 'error', 'message': 'Kunde erforderlich'})
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        INSERT INTO projekte (name, kunde, ersteller, status, erstellt_am)
+        VALUES (%s, %s, %s, %s, %s)
+        RETURNING id
+    ''', (name, kunde, session['benutzer_email'], 'gestoppt', datetime.now().isoformat()))
+    
+    projekt_id = cursor.fetchone()['id']
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'status': 'success', 'projekt_id': projekt_id})
+
+@app.route('/projekt/<int:projekt_id>')
+@login_required
+def projekt_details(projekt_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM projekte WHERE id = %s', (projekt_id,))
+    projekt_row = cursor.fetchone()
+    
+    if not projekt_row:
+        conn.close()
+        return "Projekt nicht gefunden", 404
+
+    projekt = dict(projekt_row)
+    
+    # Team-Berechtigung prüfen
+    benutzer_email = session['benutzer_email']
+    cursor.execute('SELECT team_code_verwendet FROM benutzer WHERE email = %s', (benutzer_email,))
+    benutzer_info = cursor.fetchone()
+    user_team_code = benutzer_info['team_code_verwendet'] if benutzer_info else None
+    
+    if user_team_code == TEAM_CODE:
+        pass  # Team-Mitglied hat Zugriff
+    elif projekt['ersteller'] == benutzer_email:
+        pass  # Eigenes Projekt
+    else:
+        conn.close()
+        return "Keine Berechtigung für dieses Projekt", 403
+
+    # Aktive Sitzungen laden
+    cursor.execute('''
+        SELECT mitarbeiter, teilbereich, start_zeit 
+        FROM aktive_sitzungen 
+        WHERE projekt_id = %s
+    ''', (projekt_id,))
+    
+    aktive_sitzungen = {}
+    for sitzung in cursor.fetchall():
+        aktive_sitzungen[sitzung['mitarbeiter']] = {
+            'teilbereich': sitzung['teilbereich'],
+            'start': sitzung['start_zeit'].isoformat()
+        }
+    projekt['aktive_sitzungen'] = aktive_sitzungen
+    
+    # Teilbereiche laden
+    teilbereiche = {}
+    for tb in TEILBEREICHE:
+        cursor.execute('''
+            SELECT mitarbeiter, start_zeit, end_zeit, dauer_minuten 
+            FROM sitzungen 
+            WHERE projekt_id = %s AND teilbereich = %s
+            ORDER BY start_zeit DESC
+        ''', (projekt_id, tb))
+        
+        sitzungen = []
+        gesamt_minuten = 0
+        
+        for sitzung in cursor.fetchall():
+            sitzung_dict = {
+                'mitarbeiter': sitzung['mitarbeiter'],
+                'start': sitzung['start_zeit'].isoformat(),
+                'end': sitzung['end_zeit'].isoformat(),
+                'dauer_minuten': sitzung['dauer_minuten']
+            }
+            sitzungen.append(sitzung_dict)
+            gesamt_minuten += sitzung['dauer_minuten']
+        
+        teilbereiche[tb] = {
+            'sitzungen': sitzungen,
+            'gesamt_minuten': gesamt_minuten
+        }
+    
+    projekt['teilbereiche'] = teilbereiche
+    
+    # Datumskonvertierung
+    if projekt['erstellt_am']:
+        projekt['erstellt_am'] = projekt['erstellt_am'].isoformat()
+    if projekt['beendet_am']:
+        projekt['beendet_am'] = projekt['beendet_am'].isoformat()
+    
+    conn.close()
+    
+    mitarbeiter = load_mitarbeiter()
+    return render_template('projekt_details.html',
+                         projekt=projekt,
+                         teilbereiche=TEILBEREICHE,
+                         mitarbeiter=mitarbeiter,
+                         benutzer_name=session['benutzer_name'])
+
+@app.route('/projekt/<int:projekt_id>/aktivität/starten', methods=['POST'])
+@login_required
+def aktivität_starten(projekt_id):
+    mitarbeiter = request.form['mitarbeiter']
+    teilbereich = request.form['teilbereich']
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Prüfen ob Mitarbeiter bereits aktiv
+    cursor.execute('SELECT id FROM aktive_sitzungen WHERE projekt_id = %s AND mitarbeiter = %s', 
+                   (projekt_id, mitarbeiter))
+    if cursor.fetchone():
+        conn.close()
+        return jsonify({'status': 'error', 'message': f'{mitarbeiter} arbeitet bereits'})
+
+    jetzt = datetime.now()
+    
+    # Aktive Sitzung einfügen
+    cursor.execute('''
+        INSERT INTO aktive_sitzungen (projekt_id, mitarbeiter, teilbereich, start_zeit)
+        VALUES (%s, %s, %s, %s)
+    ''', (projekt_id, mitarbeiter, teilbereich, jetzt))
+    
+    # Projekt-Status auf laufend setzen
+    cursor.execute('''
+        UPDATE projekte 
+        SET status = 'laufend', letzter_start = %s
+        WHERE id = %s
+    ''', (jetzt, projekt_id))
+    
+    # Erster Start setzen falls noch nicht gesetzt
+    cursor.execute('''
+        UPDATE projekte 
+        SET erster_start = %s
+        WHERE id = %s AND erster_start IS NULL
+    ''', (jetzt, projekt_id))
+    
+    conn.commit()
+    conn.close()
+
+    return jsonify({'status': 'success'})
+
+@app.route('/projekt/<int:projekt_id>/aktivität/beenden', methods=['POST'])
+@login_required
+def aktivität_beenden(projekt_id):
+    mitarbeiter = request.form['mitarbeiter']
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Aktive Sitzung finden
+    cursor.execute('''
+        SELECT teilbereich, start_zeit FROM aktive_sitzungen 
+        WHERE projekt_id = %s AND mitarbeiter = %s
+    ''', (projekt_id, mitarbeiter))
+    
+    aktive_sitzung = cursor.fetchone()
+    if not aktive_sitzung:
+        conn.close()
+        return jsonify({'status': 'error', 'message': 'Keine aktive Sitzung'})
+
+    end_zeit = datetime.now()
+    start_zeit = aktive_sitzung['start_zeit']
+    dauer_minuten = int((end_zeit - start_zeit).total_seconds() / 60)
+
+    # Sitzung in beendete Sitzungen verschieben
+    cursor.execute('''
+        INSERT INTO sitzungen (projekt_id, mitarbeiter, teilbereich, start_zeit, end_zeit, dauer_minuten)
+        VALUES (%s, %s, %s, %s, %s, %s)
+    ''', (projekt_id, mitarbeiter, aktive_sitzung['teilbereich'], start_zeit, end_zeit, dauer_minuten))
+    
+    # Aktive Sitzung löschen
+    cursor.execute('''
+        DELETE FROM aktive_sitzungen 
+        WHERE projekt_id = %s AND mitarbeiter = %s
+    ''', (projekt_id, mitarbeiter))
+    
+    # Prüfen ob noch aktive Sitzungen vorhanden
+    cursor.execute('SELECT COUNT(*) FROM aktive_sitzungen WHERE projekt_id = %s', (projekt_id,))
+    aktive_count = cursor.fetchone()[0]
+    
+    if aktive_count == 0:
+        cursor.execute('UPDATE projekte SET status = %s WHERE id = %s', ('pausiert', projekt_id))
+    
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        'status': 'success',
+        'dauer_text': berechne_dauer_text(dauer_minuten)
+    })
+
+@app.route('/projekt/<int:projekt_id>/beenden', methods=['POST'])
+@login_required
+def projekt_beenden(projekt_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Alle aktiven Sitzungen beenden
+    cursor.execute('SELECT mitarbeiter, teilbereich, start_zeit FROM aktive_sitzungen WHERE projekt_id = %s', (projekt_id,))
+    aktive_sitzungen = cursor.fetchall()
+    
+    end_zeit = datetime.now()
+    
+    for sitzung in aktive_sitzungen:
+        start_zeit = sitzung['start_zeit']
+        dauer_minuten = int((end_zeit - start_zeit).total_seconds() / 60)
+        
+        cursor.execute('''
+            INSERT INTO sitzungen (projekt_id, mitarbeiter, teilbereich, start_zeit, end_zeit, dauer_minuten)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        ''', (projekt_id, sitzung['mitarbeiter'], sitzung['teilbereich'], start_zeit, end_zeit, dauer_minuten))
+    
+    # Alle aktiven Sitzungen löschen
+    cursor.execute('DELETE FROM aktive_sitzungen WHERE projekt_id = %s', (projekt_id,))
+    
+    # Projekt beenden
+    cursor.execute('UPDATE projekte SET status = %s, beendet_am = %s WHERE id = %s', 
+                   ('beendet', end_zeit, projekt_id))
+    
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'status': 'success'})
+
+@app.route('/mitarbeiter/hinzufügen', methods=['POST'])
+@login_required
+def mitarbeiter_hinzufügen():
+    name = request.form['name'].strip()
+    if not name:
+        return jsonify({'status': 'error', 'message': 'Name ist erforderlich'})
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute('INSERT INTO mitarbeiter (name) VALUES (%s)', (name,))
+        conn.commit()
+        return jsonify({'status': 'success'})
+    except:
+        return jsonify({'status': 'error', 'message': 'Mitarbeiter existiert bereits'})
+    finally:
+        conn.close()
+
+@app.route('/mitarbeiter/löschen', methods=['POST'])
+@login_required
+def mitarbeiter_löschen():
+    name = request.form['name']
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM mitarbeiter WHERE name = %s', (name,))
+    conn.commit()
+    conn.close()
+    return jsonify({'status': 'success'})
+
+@app.route('/kunde/hinzufügen', methods=['POST'])
+@login_required
+def kunde_hinzufügen():
+    name = request.form['name'].strip()
+    if not name:
+        return jsonify({'status': 'error', 'message': 'Name ist erforderlich'})
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute('INSERT INTO kunden (name) VALUES (%s)', (name,))
+        conn.commit()
+        return jsonify({'status': 'success'})
+    except:
+        return jsonify({'status': 'error', 'message': 'Kunde existiert bereits'})
+    finally:
+        conn.close()
+
+@app.route('/kunde/löschen', methods=['POST'])
+@login_required
+def kunde_löschen():
+    name = request.form['name']
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM kunden WHERE name = %s', (name,))
+    conn.commit()
+    conn.close()
+    return jsonify({'status': 'success'})
+
+@app.route('/projekte/löschen', methods=['POST'])
+@login_required
+def projekte_löschen():
+    projekt_ids = request.json.get('projekt_ids', [])
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    for projekt_id in projekt_ids:
+        cursor.execute('DELETE FROM projekte WHERE id = %s', (projekt_id,))
+    
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'status': 'success'})
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port, debug=False)

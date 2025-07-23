@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAUSCH - {{ projekt.name }}</title>
+    <style>
+        :root {
+            --primary-dark: #4a5568;
+            --primary-blue: #3498db;
+            --background-light: #f8f9fa;
+            --text-dark: #2c3e50;
+            --text-light: #6c757d;
+            --border-color: #dee2e6;
+            --success: #3e9e12;
+            --warning: #fbda00;
+            --danger: #fa2d41;
+            --white: #ffffff;
+            --light-gray: #e9ecef;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-blue) 100%);
+            min-height: 100vh;
+            padding: 15px;
+            font-size: 14px;
+        }
+
+        .main-container {
+            max-width: 100%;
+            width: 100%;
+            margin: 0 auto;
+            background: var(--primary-dark);
+            border-radius: 20px;
+            padding: 15px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .main-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary-blue), #2980b9);
+            border-radius: 20px 20px 0 0;
+        }
+
+        /* ✅ MOBILE-FIRST HEADER */
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            color: var(--white);
+        }
+
+        .logo {
+            background: var(--white);
+            color: var(--text-dark);
+            font-size: 1.1em;
+            font-weight: bold;
+            padding: 6px 10px;
+            border-radius: 8px;
+            text-align: center;
+            min-width: 45px;
+            line-height: 1.2;
+        }
+
+        .back-btn {
+            background: var(--text-light);
+            color: var(--white);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .back-btn:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        /* ✅ COMPACT PROJECT INFO */
+        .projekt-info {
+            background: var(--light-gray);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 15px;
+        }
+
+        .projekt-title {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: var(--text-dark);
+            margin-bottom: 4px;
+            line-height: 1.2;
+        }
+
+        .projekt-kunde {
+            background: var(--primary-blue);
+            color: var(--white);
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 0.85em;
+            display: inline-block;
+        }
+
+        /* ✅ PROJEKT INFO GRID */
+        .projekt-info-grid {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .info-card {
+            background: var(--light-gray);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px;
+            text-align: center;
+            flex: 1;
+        }
+
+        .info-time, .info-date {
+            font-weight: bold;
+            color: var(--text-dark);
+            font-size: 0.9em;
+            margin-bottom: 2px;
+        }
+
+        .info-label {
+            color: var(--text-light);
+            font-size: 0.7em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-color: var(--primary-blue);
+            transition: all 0.3s ease;
+        }
+
+        .duration-display {
+            background: var(--light-gray);
+            border: 2px solid var(--primary-blue);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            color: var(--text-dark);
+            font-weight: bold;
+            font-size: 1em;
+        }
+
+        .duration-display div:first-child {
+            font-size: 1.2em;
+            margin-bottom: 2px;
+        }
+
+        /* ✅ MOBILE CONTROLS */
+        .controls-section {
+            margin-bottom: 15px;
+        }
+
+        .control-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+            align-items: stretch;
+        }
+
+        /* Erste Zeile: Mitarbeiter = volle Breite */
+        .control-row:first-child {
+            flex-direction: column;
+        }
+
+        .control-row:first-child .dropdown {
+            width: 100%;
+        }
+
+        /* Zweite Zeile: Tätigkeit + Start Button */
+        .control-row:last-child {
+            display: flex;
+            align-items: stretch;
+        }
+
+        .control-row:last-child .dropdown {
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* ✅ DROPDOWN STYLING */
+        .dropdown {
+            height: 48px;
+            padding: 12px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--white);
+            color: var(--text-dark);
+            font-size: 14px;
+            box-sizing: border-box;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 12px center;
+            background-repeat: no-repeat;
+            background-size: 16px;
+            padding-right: 40px;
+        }
+
+        /* ✅ START-BUTTON - IMMER GLEICHE GRÖSSE */
+        .start-btn {
+            background: var(--success);
+            color: var(--white);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            
+            /* ✅ FESTE GRÖSSE FÜR ALLE GERÄTE */
+            width: 60px !important;
+            height: 48px !important;
+            min-width: 60px !important;
+            max-width: 60px !important;
+            font-size: 12px !important;
+            padding: 0 !important;
+            
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            box-sizing: border-box !important;
+            flex: 0 0 60px !important;
+        }
+
+        .start-btn:hover {
+            background: #218838;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        /* ✅ MOBILE VERLAUF */
+        .verlauf-section {
+            color: var(--white);
+            margin-bottom: 15px;
+        }
+
+        .verlauf-title {
+            font-size: 1em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .verlauf-container {
+            background: var(--light-gray);
+            border-radius: 10px;
+            padding: 12px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .verlauf-item {
+            background: var(--white);
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-left: 3px solid var(--primary-blue);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-size: 0.85em;
+        }
+
+        .verlauf-item.aktiv {
+            border-left-color: var(--danger);
+            background: linear-gradient(135deg, #fff5f5 0%, var(--white) 100%);
+        }
+
+        .verlauf-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .mitarbeiter-name {
+            font-weight: bold;
+            color: var(--text-dark);
+            font-size: 0.9em;
+        }
+
+        .teilbereich-badge {
+            background: var(--primary-blue);
+            color: var(--white);
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.7em;
+            text-transform: capitalize;
+        }
+
+        .verlauf-zeit {
+            color: var(--text-light);
+            font-size: 0.8em;
+            margin-bottom: 6px;
+        }
+
+        .verlauf-dauer {
+            font-weight: bold;
+            color: var(--text-dark);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85em;
+        }
+
+        /* ✅ STOPP-BUTTON - MOBILE/DESKTOP UNTERSCHIEDLICH */
+        .stopp-btn {
+            background: var(--danger);
+            color: var(--white);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            animation: pulse 2s infinite;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            
+            /* ✅ MOBILE STANDARD */
+            padding: 6px 12px;
+            font-size: 0.85em;
+            min-width: 50px;
+            height: 28px;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+            70% { box-shadow: 0 0 0 6px rgba(220, 53, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+
+        /* ✅ MOBILE BOTTOM CONTROLS */
+        .bottom-controls {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 12px rgba(0,0,0,0.2);
+        }
+
+        .btn-secondary {
+            background: var(--text-light);
+            color: var(--white);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: var(--white);
+        }
+
+        .btn-primary {
+            background: var(--primary-blue);
+            color: var(--white);
+        }
+
+        .empty-verlauf {
+            text-align: center;
+            color: var(--text-light);
+            padding: 20px;
+            font-style: italic;
+            font-size: 0.85em;
+        }
+
+        /* ✅ MODAL MOBILE */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 20px;
+            width: 100%;
+            max-width: 350px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .modal-title {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: var(--text-dark);
+            margin-bottom: 12px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        /* ✅ ALERT MOBILE */
+        .alert {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-weight: bold;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            font-size: 0.85em;
+        }
+
+        .alert-success {
+            background: var(--success);
+            color: var(--white);
+        }
+
+        .alert-error {
+            background: var(--danger);
+            color: var(--white);
+        }
+
+        /* ✅ DESKTOP RESPONSIVE */
+        @media (min-width: 768px) {
+            body {
+                padding: 20px;
+                font-size: 16px;
+            }
+
+            .main-container {
+                max-width: 500px;
+                padding: 20px;
+            }
+
+            .projekt-info-grid {
+                margin-bottom: 20px;
+            }
+            
+            .info-card {
+                padding: 12px;
+            }
+            
+            .info-time, .info-date {
+                font-size: 1em;
+                margin-bottom: 4px;
+            }
+            
+            .info-label {
+                font-size: 0.75em;
+            }
+
+            .control-row {
+                flex-direction: row;
+                align-items: center;
+            }
+
+            .control-row:first-child {
+                margin-bottom: 12px;
+                flex-direction: row;
+            }
+
+            .control-row:last-child .dropdown {
+                flex: 2;
+            }
+
+            /* ✅ STOPP-BUTTON KLEINER AUF DESKTOP */
+            .stopp-btn {
+                padding: 4px 8px;
+                font-size: 0.75em;
+                min-width: 40px;
+                height: 24px;
+            }
+            
+            .verlauf-container {
+                max-height: 300px;
+            }
+
+            .alert {
+                left: auto;
+                right: 20px;
+                width: auto;
+                max-width: 350px;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .main-container {
+                max-width: 600px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- ✅ MOBILE HEADER -->
+        <div class="header-section">
+            <div class="logo">R<br><span style="font-size: 0.6em;">RAUSCH</span></div>
+            <a href="/dashboard" class="back-btn">← Dashboard</a>
+        </div>
+
+        <!-- ✅ COMPACT PROJECT INFO -->
+        <div class="projekt-info">
+            <div class="projekt-title">{{ projekt.name }}</div>
+            <div class="projekt-kunde">👤 {{ projekt.kunde or 'Kunde unbekannt' }}</div>
+
+            <div class="projekt-info-grid">
+                <div class="info-card">
+                    <div class="info-time">{{ projekt.erstellt_am[11:16] }}</div>
+                    <div class="info-label">Erstellt um</div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-date">{{ projekt.erstellt_am[8:10] }}.{{ projekt.erstellt_am[5:7] }}.</div>
+                    <div class="info-label">Erstellt am</div>
+                </div>
+            </div>
+
+            <div class="duration-display">
+                {% set gesamt_minuten = projekt.teilbereiche.besprechung.gesamt_minuten + projekt.teilbereiche.zeichnung.gesamt_minuten + projekt.teilbereiche.aufmass.gesamt_minuten %}
+                {% set stunden = gesamt_minuten // 60 %}
+                {% set minuten = gesamt_minuten % 60 %}
+                <div>{{ stunden }}h {{ minuten }}m</div>
+                <div style="font-size: 0.8em; opacity: 0.7;">Gesamt-Zeit</div>
+            </div>
+        </div>
+    
+        <!-- ✅ MOBILE CONTROLS -->
+        {% if projekt.status != 'beendet' %}
+        <div class="controls-section">
+            <form onsubmit="aktivitätStarten(event)">
+                <div class="control-row">
+                    <select class="dropdown" id="mitarbeiterSelect" required>
+                        <option value="">👤 Mitarbeiter wählen...</option>
+                        {% for ma in mitarbeiter %}
+                        <option value="{{ ma }}">{{ ma }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="control-row">
+                    <select class="dropdown" id="teilbereichSelect" required>
+                        <option value="">🔧 Tätigkeit wählen...</option>
+                        {% for tb in teilbereiche %}
+                        <option value="{{ tb }}">{{ tb|title }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="start-btn">▶️</button>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+
+        <!-- ✅ MOBILE VERLAUF -->
+        <div class="verlauf-section">
+            <div class="verlauf-title">📋 Projekt-Verlauf</div>
+            
+            <div class="verlauf-container">
+                {% set alle_aktivitäten = [] %}
+                
+                <!-- Aktive Sitzungen -->
+                {% for mitarbeiter, sitzung in projekt.aktive_sitzungen.items() %}
+                    {% set _ = alle_aktivitäten.append({
+                        'typ': 'aktiv',
+                        'mitarbeiter': mitarbeiter,
+                        'teilbereich': sitzung.teilbereich,
+                        'start': sitzung.start,
+                        'sortkey': sitzung.start
+                    }) %}
+                {% endfor %}
+                
+                <!-- Beendete Sitzungen -->
+                {% for teilbereich_name, teilbereich_data in projekt.teilbereiche.items() %}
+                    {% for sitzung in teilbereich_data.sitzungen %}
+                        {% set _ = alle_aktivitäten.append({
+                            'typ': 'beendet',
+                            'mitarbeiter': sitzung.mitarbeiter,
+                            'teilbereich': teilbereich_name,
+                            'start': sitzung.start,
+                            'end': sitzung.end,
+                            'dauer_minuten': sitzung.dauer_minuten,
+                            'sortkey': sitzung.start
+                        }) %}
+                    {% endfor %}
+                {% endfor %}
+                
+                {% set sorted_aktivitäten = alle_aktivitäten|sort(attribute='sortkey', reverse=true) %}
+                
+                {% if sorted_aktivitäten %}
+                    {% for aktivität in sorted_aktivitäten %}
+                    <div class="verlauf-item {{ aktivität.typ }}">
+                        <div class="verlauf-header">
+                            <span class="mitarbeiter-name">{{ aktivität.mitarbeiter }}</span>
+                            <span class="teilbereich-badge">{{ aktivität.teilbereich }}</span>
+                        </div>
+                        
+                        <div class="verlauf-zeit">
+                            {% if aktivität.typ == 'aktiv' %}
+                                ⏱️ Seit: {{ aktivität.start[11:16] }} Uhr
+                            {% else %}
+                                🕐 {{ aktivität.start[11:16] }} - {{ aktivität.end[11:16] }} Uhr
+                            {% endif %}
+                        </div>
+                        
+                        <div class="verlauf-dauer">
+                            {% if aktivität.typ == 'aktiv' %}
+                                <span class="live-timer" data-start="{{ aktivität.start }}">Läuft...</span>
+                                <button class="stopp-btn" onclick="aktivitätBeenden('{{ aktivität.mitarbeiter }}')">
+                                    Stop
+                                </button>
+                            {% else %}
+                                <span>
+                                    {% if aktivität.dauer_minuten < 60 %}
+                                        {{ aktivität.dauer_minuten }}min
+                                    {% else %}
+                                        {{ aktivität.dauer_minuten // 60 }}h {{ aktivität.dauer_minuten % 60 }}m
+                                    {% endif %}
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-verlauf">
+                        📭 Noch keine Aktivitäten
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- ✅ MOBILE BOTTOM CONTROLS -->
+        <div class="bottom-controls">
+            <a href="/dashboard" class="btn btn-secondary">← Zurück</a>
+            {% if projekt.status != 'beendet' %}
+                <button class="btn btn-danger" onclick="projektBeenden()">🏁 Beenden</button>
+            {% else %}
+                <button class="btn btn-primary" onclick="berichtAnzeigen()">📄 Bericht</button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ✅ MOBILE MODAL -->
+    <div id="projektBeendenModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">🏁 Projekt beenden?</div>
+            <p style="margin: 10px 0; color: var(--text-light); font-size: 0.9em;">
+                Alle aktiven Aktivitäten werden gestoppt.
+            </p>
+            <div class="modal-buttons">
+                <button class="btn btn-danger" onclick="projektBeendenBestätigen()">Ja</button>
+                <button class="btn btn-secondary" onclick="closeModal('projektBeendenModal')">Nein</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateLiveTimers() {
+            const timers = document.querySelectorAll('.live-timer');
+            timers.forEach(timer => {
+                const startTime = new Date(timer.dataset.start);
+                const now = new Date();
+                const diffMs = now - startTime;
+                const diffMinutes = Math.floor(diffMs / 60000);
+                
+                if (diffMinutes >= 0) {
+                    const hours = Math.floor(diffMinutes / 60);
+                    const mins = diffMinutes % 60;
+                    timer.textContent = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+                }
+            });
+        }
+
+        function showAlert(message, type = 'error') {
+            const existingAlert = document.querySelector('.alert');
+            if (existingAlert) {
+                existingAlert.remove();
+            }
+
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            document.body.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 3000);
+        }
+
+        function openModal(modalId) {
+            document.getElementById(modalId).style.display = 'flex';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function aktivitätStarten(event) {
+            event.preventDefault();
+            
+            const mitarbeiter = document.getElementById('mitarbeiterSelect').value;
+            const teilbereich = document.getElementById('teilbereichSelect').value;
+            
+            if (!mitarbeiter || !teilbereich) {
+                showAlert('❌ Bitte Mitarbeiter und Tätigkeit auswählen');
+                return;
+            }
+            
+            fetch(`/projekt/{{ projekt.id }}/aktivität/starten`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `mitarbeiter=${encodeURIComponent(mitarbeiter)}&teilbereich=${encodeURIComponent(teilbereich)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showAlert('✅ Aktivität gestartet!', 'success');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showAlert('❌ ' + (data.message || 'Fehler beim Starten'));
+                }
+            })
+            .catch(error => {
+                showAlert('❌ Netzwerk-Fehler');
+            });
+        }
+
+        function aktivitätBeenden(mitarbeiter) {
+            fetch(`/projekt/{{ projekt.id }}/aktivität/beenden`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `mitarbeiter=${encodeURIComponent(mitarbeiter)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showAlert('✅ Aktivität beendet!', 'success');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showAlert('❌ ' + (data.message || 'Fehler beim Beenden'));
+                }
+            })
+            .catch(error => {
+                showAlert('❌ Netzwerk-Fehler');
+            });
+        }
+
+        function projektBeenden() {
+            openModal('projektBeendenModal');
+        }
+
+        function projektBeendenBestätigen() {
+            fetch(`/projekt/{{ projekt.id }}/beenden`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showAlert('✅ Projekt beendet!', 'success');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showAlert('❌ ' + (data.message || 'Fehler beim Beenden'));
+                }
+            })
+            .catch(error => {
+                showAlert('❌ Netzwerk-Fehler');
+            });
+            
+            closeModal('projektBeendenModal');
+        }
+
+        function berichtAnzeigen() {
+            window.open(`/projekt/{{ projekt.id }}/bericht`, '_blank');
+        }
+
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        }
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                const openModal = document.querySelector('.modal[style*="flex"]');
+                if (openModal) {
+                    openModal.style.display = 'none';
+                }
+            }
+        });
+
+        // Initialize
+        updateLiveTimers();
+        setInterval(updateLiveTimers, 30000);
+    </script>
+</body>
+</html>

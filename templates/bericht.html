@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAUSCH - Projekt Bericht</title>
+    <style>
+        :root {
+            --primary-dark: #4a5568;
+            --primary-blue: #3498db;
+            --background-light: #f8f9fa;
+            --text-dark: #2c3e50;
+            --text-light: #6c757d;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --white: #ffffff;
+            --border-color: #dee2e6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-blue) 100%);
+            min-height: 100vh;
+            padding: 15px;
+            font-size: 14px;
+        }
+
+        .report-container {
+            max-width: 100%;
+            margin: 0 auto;
+            background: var(--white);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        /* ✅ MOBILE CLOSE BUTTON */
+        .close-button {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: var(--danger);
+            color: var(--white);
+            border: none;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 3px 12px rgba(220, 53, 69, 0.3);
+            z-index: 10;
+        }
+
+        .close-button:hover {
+            background: #c82333;
+            transform: scale(1.1);
+        }
+
+        /* ✅ COMPACT HEADER */
+        .report-header {
+            text-align: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--primary-blue);
+            padding-right: 50px; /* Space for close button */
+        }
+
+        .report-title {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: var(--primary-dark);
+            margin-bottom: 6px;
+            line-height: 1.2;
+        }
+
+        .report-subtitle {
+            font-size: 1em;
+            color: var(--text-light);
+        }
+
+        /* ✅ MOBILE SECTIONS */
+        .report-section {
+            margin-bottom: 20px;
+            background: var(--background-light);
+            border-radius: 10px;
+            padding: 15px;
+            border-left: 4px solid var(--primary-blue);
+        }
+
+        .section-title {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: var(--primary-dark);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* ✅ MOBILE STATS GRID */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .stat-card {
+            background: var(--white);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 2px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+
+        .stat-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: var(--primary-blue);
+            margin-bottom: 4px;
+            line-height: 1.1;
+        }
+
+        .stat-label {
+            color: var(--text-light);
+            font-size: 0.75em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ✅ MOBILE MITARBEITER CARDS */
+        .mitarbeiter-section {
+            margin-top: 15px;
+        }
+
+        .mitarbeiter-card {
+            background: var(--white);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            page-break-inside: avoid;
+        }
+
+        .mitarbeiter-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--primary-blue);
+        }
+
+        .mitarbeiter-name {
+            font-size: 1em;
+            font-weight: bold;
+            color: var(--primary-dark);
+        }
+
+        .mitarbeiter-total {
+            background: var(--primary-blue);
+            color: var(--white);
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 0.8em;
+        }
+
+        /* ✅ MOBILE TEILBEREICHE GRID */
+        .teilbereiche-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+
+        .teilbereich-item {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .teilbereich-item:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-color: var(--primary-blue);
+        }
+
+        .teilbereich-icon {
+            font-size: 1.4em;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--white);
+            border-radius: 50%;
+            border: 2px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .teilbereich-content {
+            flex: 1;
+        }
+
+        .teilbereich-name {
+            font-weight: bold;
+            color: var(--text-dark);
+            font-size: 0.8em;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .teilbereich-zeit {
+            font-size: 1em;
+            font-weight: bold;
+            color: var(--primary-blue);
+        }
+
+        /* ✅ TEILBEREICH COLORS */
+        .teilbereich-item:nth-child(1) .teilbereich-icon {
+            background: #e3f2fd;
+            border-color: #1976d2;
+        }
+
+        .teilbereich-item:nth-child(2) .teilbereich-icon {
+            background: #f3e5f5;
+            border-color: #7b1fa2;
+        }
+
+        .teilbereich-item:nth-child(3) .teilbereich-icon {
+            background: #e8f5e8;
+            border-color: #388e3c;
+        }
+
+        /* ✅ MOBILE ACTION BUTTONS */
+        .actions-section {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 25px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .btn-primary {
+            background: var(--primary-blue);
+            color: var(--white);
+        }
+
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--text-light);
+            color: var(--white);
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        /* ✅ DESKTOP RESPONSIVE */
+        @media (min-width: 768px) {
+            body {
+                padding: 20px;
+                font-size: 16px;
+            }
+
+            .report-container {
+                max-width: 800px;
+                padding: 30px;
+            }
+
+            .close-button {
+                width: 40px;
+                height: 40px;
+                font-size: 18px;
+                top: 20px;
+                right: 20px;
+            }
+
+            .report-title {
+                font-size: 2em;
+            }
+
+            .report-subtitle {
+                font-size: 1.2em;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 15px;
+            }
+
+            .teilbereiche-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 12px;
+            }
+
+            .actions-section {
+                flex-wrap: nowrap;
+            }
+
+            .btn {
+                flex: none;
+                min-width: auto;
+                padding: 12px 25px;
+                font-size: 14px;
+            }
+        }
+
+        /* ✅ PRINT OPTIMIZATION - MOBILE FIRST */
+        @media print {
+            .close-button,
+            .actions-section {
+                display: none !important;
+            }
+            
+            body {
+                background: white !important;
+                padding: 0 !important;
+                font-size: 10px !important;
+            }
+            
+            .report-container {
+                box-shadow: none !important;
+                border: none !important;
+                border-radius: 0 !important;
+                margin: 0 !important;
+                padding: 10px !important;
+                background: white !important;
+                max-height: 100vh !important;
+            }
+
+            .report-header {
+                margin-bottom: 15px !important;
+                padding-bottom: 8px !important;
+                padding-right: 0 !important;
+            }
+
+            .report-title {
+                font-size: 1.4em !important;
+                margin-bottom: 4px !important;
+                color: black !important;
+            }
+
+            .report-subtitle {
+                font-size: 0.9em !important;
+            }
+
+            .report-section {
+                background: white !important;
+                border: 1px solid #ddd !important;
+                border-radius: 4px !important;
+                margin-bottom: 10px !important;
+                padding: 10px !important;
+                page-break-inside: avoid;
+            }
+
+            .section-title {
+                font-size: 1em !important;
+                margin-bottom: 8px !important;
+                color: black !important;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(4, 1fr) !important;
+                gap: 6px !important;
+                margin-bottom: 8px !important;
+            }
+
+            .stat-card {
+                border: 1px solid #ddd !important;
+                background: #f9f9f9 !important;
+                padding: 6px !important;
+                page-break-inside: avoid;
+            }
+
+            .stat-value {
+                font-size: 1.1em !important;
+                color: black !important;
+                margin-bottom: 2px !important;
+            }
+
+            .stat-label {
+                font-size: 0.7em !important;
+            }
+
+            .mitarbeiter-card {
+                border: 1px solid #ddd !important;
+                background: #f9f9f9 !important;
+                page-break-inside: avoid;
+                margin-bottom: 8px !important;
+                padding: 8px !important;
+            }
+
+            .mitarbeiter-header {
+                margin-bottom: 6px !important;
+                padding-bottom: 4px !important;
+            }
+
+            .mitarbeiter-name {
+                font-size: 0.9em !important;
+                color: black !important;
+            }
+
+            .mitarbeiter-total {
+                background: #333 !important;
+                color: white !important;
+                padding: 3px 6px !important;
+                font-size: 0.7em !important;
+            }
+
+            .teilbereiche-grid {
+                grid-template-columns: repeat(3, 1fr) !important;
+                gap: 4px !important;
+            }
+
+            .teilbereich-item {
+                background: #f9f9f9 !important;
+                border: 1px solid #ddd !important;
+                padding: 6px !important;
+                page-break-inside: avoid;
+            }
+
+            .teilbereich-icon {
+                font-size: 1em !important;
+                width: 25px !important;
+                height: 25px !important;
+            }
+
+            .teilbereich-name {
+                font-size: 0.7em !important;
+                margin-bottom: 1px !important;
+            }
+
+            .teilbereich-zeit {
+                font-size: 0.8em !important;
+                color: black !important;
+            }
+
+            @page {
+                margin: 0.5cm !important;
+                size: A4;
+            }
+
+            /* Force single page */
+            .report-container {
+                transform: scale(0.9) !important;
+                transform-origin: top left !important;
+                width: 111% !important;
+            }
+
+            * {
+                page-break-inside: avoid !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="report-container">
+        <!-- ✅ MOBILE CLOSE BUTTON -->
+        <button class="close-button" onclick="schließen()" title="Bericht schließen">
+            ✕
+        </button>
+
+        <!-- ✅ COMPACT HEADER -->
+        <div class="report-header">
+            <div class="report-title">{{ bericht.projekt_name }}</div>
+            <div class="report-subtitle">👤 {{ projekt.kunde }}</div>
+        </div>
+
+        <!-- ✅ MOBILE PROJECT OVERVIEW -->
+        <div class="report-section">
+            <div class="section-title">
+                📈 Projekt-Übersicht
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">{{ bericht.gesamt_arbeitszeit }}</div>
+                    <div class="stat-label">Gesamt-Zeit</div>
+                </div>
+                <div class="stat-card">
+    <div class="stat-value">{{ bericht.kalendertage }}</div>
+    <div class="stat-label">Kalendertage</div>
+</div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ bericht.mitarbeiter|length }}</div>
+                    <div class="stat-label">Mitarbeiter</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">
+    {{ bericht.teilbereiche.besprechung.anzahl_sitzungen + bericht.teilbereiche.zeichnung.anzahl_sitzungen
+         + bericht.teilbereiche.aufmass.anzahl_sitzungen }}
+</div>
+                    <div class="stat-label">Sitzungen</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ✅ MOBILE MITARBEITER SECTION -->
+        <div class="report-section">
+            <div class="section-title">
+                👥 Mitarbeiter-Aufwand
+            </div>
+            <div class="mitarbeiter-section">
+                {% for name, data in bericht.mitarbeiter.items() %}
+                <div class="mitarbeiter-card">
+                    <!-- Mitarbeiter Header -->
+                    <div class="mitarbeiter-header">
+                        <div class="mitarbeiter-name">👤 {{ name }}</div>
+                        <div class="mitarbeiter-total">{{ data.gesamt_zeit }}</div>
+                    </div>
+                    
+                    <!-- Mobile Teilbereiche Grid -->
+                    <div class="teilbereiche-grid">
+                        {% for tb_name, tb_zeit in data.teilbereiche.items() %}
+                        <div class="teilbereich-item">
+                            <div class="teilbereich-icon">
+                                {% if tb_name == 'besprechung' %}💬
+                                {% elif tb_name == 'zeichnung' %}📐
+                                {% elif tb_name == 'aufmass' %}📏
+                                {% else %}🔧{% endif %}
+                            </div>
+                            <div class="teilbereich-content">
+                                <div class="teilbereich-name">{{ tb_name|title }}</div>
+                                <div class="teilbereich-zeit">{{ tb_zeit }}</div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- ✅ MOBILE ACTIONS -->
+        <div class="actions-section">
+            <button onclick="drucken()" class="btn btn-primary">🖨️ Drucken</button>
+            <button onclick="schließen()" class="btn btn-secondary">← Zurück</button>
+        </div>
+    </div>
+
+   <script>
+    function schließen() {
+        window.location.href = '/dashboard';
+    }
+
+    function drucken() {
+        window.print();
+    }
+
+    // ESC-Taste
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            schließen();
+        }
+    });
+</script>
+</body>
+</html>

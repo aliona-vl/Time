@@ -1,0 +1,354 @@
+[
+  {
+    "id": 2,
+    "name": "Projekt2",
+    "kunde": "Nowakowski",
+    "ersteller": "dhelenv@gmail.com",
+    "status": "beendet",
+    "erstellt_am": "2025-06-12T09:01:34.573005",
+    "beendet_am": "2025-06-12T10:42:21.985341",
+    "aktive_sitzungen": {},
+    "teilbereiche": {
+      "besprechung": {
+        "sitzungen": [
+          {
+            "mitarbeiter": "Fritz",
+            "start": "2025-06-12T09:30:06.780293",
+            "end": "2025-06-12T09:47:40.525266",
+            "dauer_minuten": 17
+          }
+        ],
+        "gesamt_minuten": 17
+      },
+      "zeichnung": {
+        "sitzungen": [
+          {
+            "mitarbeiter": "Fritz",
+            "start": "2025-06-12T09:03:20.604209",
+            "end": "2025-06-12T09:29:40.263331",
+            "dauer_minuten": 26
+          },
+          {
+            "mitarbeiter": "Thomas",
+            "start": "2025-06-12T09:47:51.322708",
+            "end": "2025-06-12T10:15:41.893379",
+            "dauer_minuten": 27
+          },
+          {
+            "mitarbeiter": "Fritz",
+            "start": "2025-06-12T10:15:53.072963",
+            "end": "2025-06-12T10:42:16.952089",
+            "dauer_minuten": 26
+          }
+        ],
+        "gesamt_minuten": 79
+      },
+      "aufmass": {
+        "sitzungen": [
+          {
+            "mitarbeiter": "Thomas",
+            "start": "2025-06-12T09:30:17.895593",
+            "end": "2025-06-12T09:47:37.908788",
+            "dauer_minuten": 17
+          }
+        ],
+        "gesamt_minuten": 17
+      }
+    }
+  },
+  {
+    "id": 4,
+    "name": "Таомосо",
+    "kunde": "Fererro",
+    "ersteller": "dhelenv@gmail.com",
+    "status": "beendet",
+    "erstellt_am": "2025-06-12T09:33:18.036122",
+    "beendet_am": "2025-06-13T08:15:45.462248",
+    "aktive_sitzungen": {},
+    "teilbereiche": {
+      "besprechung": {
+        "sitzungen": [],
+        "gesamt_minuten": 0
+      },
+      "zeichnung": {
+        "sitzungen": [
+          {
+            "mitarbeiter": "Thomas",
+            "start": "2025-06-12T09:33:36.462857",
+            "end": "2025-06-12T10:14:33.999330",
+            "dauer_minuten": 40
+          }
+        ],
+        "gesamt_minuten": 40
+      },
+      "aufmass": {
+        "sitzungen": [],
+        "gesamt_minuten": 0
+      }
+    }
+  },
+  {
+    "id": 6,
+    "name": "Projek Projekt Fererro, fjfjjgjgkhkhkgkgjgj,hghghghg,vbvbvbg jfhfjjfjfj",
+    "kunde": "Duktus",
+    "ersteller": "dhelenv@gmail.com",
+    "status": "beendet",
+    "erstellt_am": "2025-06-12T11:20:19.490191",
+    "beendet_am": "2025-06-17T11:20:34.736648",
+    "aktive_sitzungen": {},
+    "teilbereiche": {
+      "besprechung": {
+        "sitzungen": [],
+        "gesamt_minuten": 0
+      },
+      "zeichnung": {
+        "sitzungen": [
+          {
+            "mitarbeiter": "Fritz",
+            "start": "2025-06-13T08:30:53.345204",
+            "end": "2025-06-13T11:08:42.161148",
+            "dauer_minuten": 157
+          },
+          {
+            "mitarbeiter": "Thomas",
+            "start": "2025-06-16T11:41:20.744306",
+            "end": "2025-06-17T09:13:15.499593",
+            "dauer_minuten": 1291
+          }
+        ],
+        "gesamt_minuten": 1448
+      },
+      "aufmass": {
+        "sitzungen": [],
+        "gesamt_minuten": 0
+      }
+    },
+    "erster_start": "2025-06-16T11:41:20.744306",
+    "letzter_start": "2025-06-16T11:41:20.744306"
+  },
+  {
+    "id": 7,
+    "name": "bjhjhhjjhj",
+    "kunde": "Bosch Lollar",
+    "ersteller": "dhelenv@gmail.com",
+    "benutzer_email": "dhelenv@gmail.com",
+    "status": "beendet",
+    "erstellt_am": "2025-06-12T13:50:30.875408",
+    "beendet_am": "2025-06-16T11:41:03.830760",
+    "aktive_sitzungen": {},
+    "teilbereiche": {
+      "besprechung": {
+        "sitzungen": [],
+        "gesamt_minuten": 0
+      },
+      "zeichnung": {
+        "sitzungen": [],
+        "gesamt_minuten": 0
+      },
+      "aufmass": {
+        "sitzungen": [
+          {
+            "mitarbeiter": "Herr Müller",
+            "start": "2025-06-13T10:14:09.520703",
+            "end": "2025-06-16T11:41:03.830746",
+            "dauer_minuten": 4406
+          }
+        ],
+        "gesamt_minuten": 4406
+      }
+    },
+    "erster_start": "2025-06-13T10:14:09.520703",
+    "letzter_start": "2025-06-13T10:14:09.520703"
+  },
+  {
+    "id": 8,
+    "name": "gogogogogogo",
+    "kunde": "Fritz Winter",
+    "ersteller": "dhelenv@gmail.com",
+    "status": "beendet",
+    "erstellt_am": "2025-06-12T14:24:27.570271",
+    "beendet_am": "2025-06-13T08:15:51.791184",
+    "aktive_sitzungen": {},
+    "teilbereiche": {
+      "besprechung": {
+        "sitzungen": [],
+        "gesamt_minuten": 0
+      },
+      "zeichnung": {
+        "sitzungen": [
+          {
+            "mitarbeiter": "Mark",
+            "start": "2025-06-12T14:24:45.509324",
+            "end": "2025-06-13T08:14:53.993356",
+            "dauer_minuten": 1070
+          }
+        ],
+        "gesamt_minuten": 1070
+      },
+      "aufmass": {
+        "sitzungen": [],
+        "gesamt_minuten": 0
+      }
+    }
+  },
+  {
+    "id": 9,
+    "name": "fdfsdfdsfdg",
+    "kunde": "Duktus",
+    "ersteller": "dhelenv@gmail.com",
+    "benutzer_email": "dhelenv@gmail.com",
+    "status": "beendet",
+    "erstellt_am": "2025-06-13T11:01:12.487892",
+    "erster_start": "2025-06-13T13:16:29.552468",
+    "letzter_start": "2025-06-13T13:16:29.552468",
+    "beendet_am": "2025-06-16T11:41:39.369377",
+    "aktive_sitzungen": {},
+    "teilbereiche": {
+      "besprechung": {
+        "sitzungen": [],
+        "gesamt_minuten": 0
+      },
+      "zeichnung": {
+        "sitzungen": [
+          {
+            "mitarbeiter": "Fritz",
+            "start": "2025-06-13T13:16:29.552468",
+            "end": "2025-06-16T11:41:31.052258",
+            "dauer_minuten": 4225
+          }
+        ],
+        "gesamt_minuten": 4225
+      },
+      "aufmass": {
+        "sitzungen": [],
+        "gesamt_minuten": 0
+      }
+    }
+  },
+  {
+    "id": 10,
+    "name": "Sql",
+    "kunde": "Ggg",
+    "ersteller": "dhelenv@gmail.com",
+    "benutzer_email": "dhelenv@gmail.com",
+    "status": "beendet",
+    "erstellt_am": "2025-06-17T09:23:33.063874",
+    "erster_start": "2025-06-17T09:23:48.422569",
+    "letzter_start": "2025-06-24T08:39:12.382414",
+    "beendet_am": "2025-07-01T08:49:23.212956",
+    "aktive_sitzungen": {},
+    "teilbereiche": {
+      "besprechung": {
+        "sitzungen": [],
+        "gesamt_minuten": 0
+      },
+      "zeichnung": {
+        "sitzungen": [
+          {
+            "mitarbeiter": "Sabine",
+            "start": "2025-06-17T09:23:48.422569",
+            "end": "2025-06-24T08:33:24.097298",
+            "dauer_minuten": 10029
+          },
+          {
+            "mitarbeiter": "jjjj",
+            "start": "2025-06-24T08:39:12.382414",
+            "end": "2025-07-01T08:49:11.155083",
+            "dauer_minuten": 10089
+          }
+        ],
+        "gesamt_minuten": 20118
+      },
+      "aufmass": {
+        "sitzungen": [
+          {
+            "mitarbeiter": "Ffff",
+            "start": "2025-06-24T08:35:43.779093",
+            "end": "2025-07-01T08:49:13.670847",
+            "dauer_minuten": 10093
+          }
+        ],
+        "gesamt_minuten": 10093
+      }
+    }
+  },
+  {
+    "id": 11,
+    "name": "Ререоеое",
+    "kunde": "Fritz Winter",
+    "ersteller": "dhelenv@gmail.com",
+    "benutzer_email": "dhelenv@gmail.com",
+    "status": "beendet",
+    "erstellt_am": "2025-06-17T10:51:29.401477",
+    "erster_start": "2025-06-17T10:54:30.634427",
+    "letzter_start": "2025-06-17T10:55:28.477926",
+    "beendet_am": "2025-06-17T10:55:50.385309",
+    "aktive_sitzungen": {},
+    "teilbereiche": {
+      "besprechung": {
+        "sitzungen": [],
+        "gesamt_minuten": 0
+      },
+      "zeichnung": {
+        "sitzungen": [
+          {
+            "mitarbeiter": "Thomas",
+            "start": "2025-06-17T10:55:28.477926",
+            "end": "2025-06-17T10:55:35.204397",
+            "dauer_minuten": 0
+          },
+          {
+            "mitarbeiter": "Fritz",
+            "start": "2025-06-17T10:54:30.634427",
+            "end": "2025-06-17T10:55:50.385296",
+            "dauer_minuten": 1
+          }
+        ],
+        "gesamt_minuten": 1
+      },
+      "aufmass": {
+        "sitzungen": [],
+        "gesamt_minuten": 0
+      }
+    }
+  },
+  {
+    "id": 12,
+    "name": "jfgjhfjghdjfhgjfhgjhf",
+    "kunde": "Duktus",
+    "ersteller": "dhelenv@gmail.com",
+    "benutzer_email": "dhelenv@gmail.com",
+    "status": "laufend",
+    "erstellt_am": "2025-07-01T23:27:08.314948",
+    "erster_start": "2025-07-01T23:27:46.277349",
+    "letzter_start": "2025-07-01T23:28:11.310763",
+    "beendet_am": null,
+    "aktive_sitzungen": {
+      "zrjzjzuuzz": {
+        "teilbereich": "besprechung",
+        "start": "2025-07-01T23:27:46.277349"
+      }
+    },
+    "teilbereiche": {
+      "besprechung": {
+        "sitzungen": [
+          {
+            "mitarbeiter": "Herr Müller",
+            "start": "2025-07-01T23:28:11.310763",
+            "end": "2025-07-01T23:28:36.848968",
+            "dauer_minuten": 0
+          }
+        ],
+        "gesamt_minuten": 0
+      },
+      "zeichnung": {
+        "sitzungen": [],
+        "gesamt_minuten": 0
+      },
+      "aufmass": {
+        "sitzungen": [],
+        "gesamt_minuten": 0
+      }
+    }
+  }
+]

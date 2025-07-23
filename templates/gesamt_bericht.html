@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAUSCH - Gesamt-Bericht {{ von_datum }} bis {{ bis_datum }}</title>
+    <style>
+        :root {
+            --primary-dark: #4a5568;
+            --primary-blue: #3498db;
+            --background-light: #f8f9fa;
+            --text-dark: #2c3e50;
+            --text-light: #6c757d;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --white: #ffffff;
+            --border-color: #dee2e6;
+            --gray: #6c757d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: white;
+            padding: 15px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .report-container {
+            max-width: 100%;
+            margin: 0 auto;
+            background: white;
+        }
+
+        /* ✅ MOBILE HEADER */
+        .report-header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 3px solid var(--primary-blue);
+        }
+
+        .report-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: var(--primary-dark);
+            margin-bottom: 6px;
+            line-height: 1.2;
+        }
+
+        .report-subtitle {
+            font-size: 0.9em;
+            color: var(--text-light);
+        }
+
+        /* ✅ MOBILE SECTIONS */
+        .report-section {
+            margin-bottom: 20px;
+            background: var(--background-light);
+            border-radius: 8px;
+            padding: 12px;
+            border-left: 3px solid var(--primary-blue);
+        }
+
+        .section-title {
+            font-size: 1em;
+            font-weight: bold;
+            color: var(--primary-dark);
+            margin-bottom: 12px;
+        }
+
+        /* ✅ MOBILE PROJECT ITEMS */
+        .projekt-item {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 10px;
+            page-break-inside: avoid;
+        }
+
+        .projekt-header {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid var(--primary-blue);
+        }
+
+        .projekt-name {
+            font-size: 1em;
+            font-weight: bold;
+            color: var(--primary-dark);
+            line-height: 1.2;
+        }
+
+        .projekt-kunde {
+            color: var(--text-light);
+            font-style: italic;
+            font-size: 0.85em;
+        }
+
+        .projekt-gesamt {
+            background: var(--primary-blue);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 0.8em;
+            align-self: flex-start;
+            margin-top: 4px;
+        }
+
+        /* ✅ MOBILE TEILBEREICHE */
+        .teilbereiche-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .teilbereich-item {
+            background: var(--background-light);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .teilbereich-name {
+            font-weight: bold;
+            font-size: 0.8em;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .teilbereich-zeit {
+            color: var(--primary-blue);
+            font-weight: bold;
+            font-size: 0.8em;
+        }
+
+        /* ✅ BUTTON STYLES */
+        .action-buttons {
+            text-align: center;
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 2px solid var(--border-color);
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            color: white;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn-print {
+            background: var(--success);
+        }
+
+        .btn-back {
+            background: var(--gray);
+        }
+
+        /* ✅ DESKTOP RESPONSIVE */
+        @media (min-width: 768px) {
+            body {
+                padding: 20px;
+                font-size: 14px;
+            }
+
+            .report-container {
+                max-width: 900px;
+            }
+
+            .report-title {
+                font-size: 1.8em;
+            }
+
+            .report-subtitle {
+                font-size: 1em;
+            }
+
+            .projekt-header {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .projekt-gesamt {
+                margin-top: 0;
+            }
+
+            .teilbereiche-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 10px;
+            }
+
+            .btn {
+                padding: 15px 30px;
+                font-size: 16px;
+            }
+        }
+
+        /* ✅ MOBILE RESPONSIVE BUTTONS */
+        @media (max-width: 768px) {
+            .action-buttons {
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .btn {
+                width: 100%;
+                max-width: 250px;
+            }
+        }
+
+        /* ✅ PRINT OPTIMIZATION */
+        @media print {
+            .action-buttons {
+                display: none !important;
+            }
+
+            body {
+                background: white !important;
+                padding: 5px !important;
+                font-size: 9px !important;
+            }
+            
+            @page {
+                margin: 0.5cm;
+                size: A4;
+            }
+
+            .report-container {
+                transform: scale(0.95);
+                transform-origin: top left;
+                width: 105%;
+            }
+
+            .projekt-item {
+                page-break-inside: avoid;
+                break-inside: avoid;
+                margin-bottom: 8px !important;
+            }
+
+            .report-section {
+                page-break-inside: avoid;
+                break-inside: avoid;
+                margin-bottom: 12px !important;
+            }
+
+            .report-title {
+                font-size: 1.4em !important;
+                color: black !important;
+            }
+
+            .report-subtitle {
+                font-size: 0.8em !important;
+            }
+
+            .section-title {
+                font-size: 0.9em !important;
+                color: black !important;
+            }
+
+            .projekt-name {
+                font-size: 0.9em !important;
+                color: black !important;
+            }
+
+            .teilbereiche-grid {
+                grid-template-columns: repeat(3, 1fr) !important;
+                gap: 6px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="report-container">
+        <!-- ✅ MOBILE HEADER -->
+        <div class="report-header">
+            <div class="report-title">📊 Gesamt-Bericht RAUSCH</div>
+            <div class="report-subtitle">Zeitraum: {{ von_datum }} bis {{ bis_datum }}</div>
+        </div>
+
+        <!-- ✅ SUMMARY LEISTE WIE IN VORSCHAU -->
+        <div class="summary-bar" style="background: var(--primary-blue); color: white; padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 20px; font-weight: bold; font-size: 14px;">
+            📊 {{ projekte|length }} Projekt(e) | 
+            ⏱️ 
+            {% set alle_zeit = 0 %}
+            {% for projekt in projekte %}
+                {% set projekt_zeit = projekt.teilbereiche.besprechung.gesamt_minuten + projekt.teilbereiche.zeichnung.gesamt_minuten + projekt.teilbereiche.aufmass.gesamt_minuten %}
+                {% set alle_zeit = alle_zeit + projekt_zeit %}
+            {% endfor %}
+            
+            {% if alle_zeit < 60 %}
+                {{ alle_zeit }}min
+            {% else %}
+                {{ alle_zeit // 60 }}h {{ alle_zeit % 60 }}min
+            {% endif %}
+        </div>
+
+        <!-- ✅ MOBILE PROJECT LIST -->
+        <div class="report-section">
+            <!-- ... rest der Projekte ... -->
+
+        <!-- ✅ MOBILE PROJECT LIST -->
+        <div class="report-section">
+            <div class="section-title">🏗️ Beendete Projekte ({{ projekte|length }})</div>
+            
+            {% if projekte %}
+                {% for projekt in projekte %}
+                <div class="projekt-item">
+                    <div class="projekt-header">
+                        <div>
+                            <div class="projekt-name">{{ projekt.name }}</div>
+                            <div class="projekt-kunde">👤 {{ projekt.kunde }}</div>
+                        </div>
+                        <div class="projekt-gesamt">
+                            {% set gesamt = projekt.teilbereiche.besprechung.gesamt_minuten + projekt.teilbereiche.zeichnung.gesamt_minuten + projekt.teilbereiche.aufmass.gesamt_minuten %}
+                            {% if gesamt < 60 %}
+                                {{ gesamt }}min
+                            {% else %}
+                                {{ gesamt // 60 }}h {{ gesamt % 60 }}min
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- ✅ MOBILE TEILBEREICHE -->
+                    <div class="teilbereiche-grid">
+                        <div class="teilbereich-item">
+                            <div class="teilbereich-name">💬 Besprechung</div>
+                            <div class="teilbereich-zeit">
+                                {% if projekt.teilbereiche.besprechung.gesamt_minuten < 60 %}
+                                    {{ projekt.teilbereiche.besprechung.gesamt_minuten }}min
+                                {% else %}
+                                    {{ projekt.teilbereiche.besprechung.gesamt_minuten // 60 }}h {{ projekt.teilbereiche.besprechung.gesamt_minuten % 60 }}min
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="teilbereich-item">
+                            <div class="teilbereich-name">📐 Zeichnung</div>
+                            <div class="teilbereich-zeit">
+                                {% if projekt.teilbereiche.zeichnung.gesamt_minuten < 60 %}
+                                    {{ projekt.teilbereiche.zeichnung.gesamt_minuten }}min
+                                {% else %}
+                                    {{ projekt.teilbereiche.zeichnung.gesamt_minuten // 60 }}h {{ projekt.teilbereiche.zeichnung.gesamt_minuten % 60 }}min
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="teilbereich-item">
+                            <div class="teilbereich-name">📏 Aufmaß</div>
+                            <div class="teilbereich-zeit">
+                                {% if projekt.teilbereiche.aufmass.gesamt_minuten < 60 %}
+                                    {{ projekt.teilbereiche.aufmass.gesamt_minuten }}min
+                                {% else %}
+                                    {{ projekt.teilbereiche.aufmass.gesamt_minuten // 60 }}h {{ projekt.teilbereiche.aufmass.gesamt_minuten % 60 }}min
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div style="text-align: center; padding: 20px; color: var(--text-light); font-style: italic;">
+                    📭 Keine beendeten Projekte im gewählten Zeitraum gefunden.
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- ✅ PROJEKT-LISTE + BUTTONS (KEIN AUTO-PRINT) -->
+        <div class="action-buttons">
+            
+            <button onclick="window.print()" class="btn btn-print">
+                🖨️ Drucken
+            </button>
+            
+            <button onclick="goBack()" class="btn btn-back">
+                ← Zurück
+            </button>
+            
+        </div>
+    </div>
+
+    <script>
+        // ✅ ZURÜCK FUNKTION
+        function goBack() {
+            // Versuche verschiedene Wege zurück zu gehen
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.href = '/dashboard';
+            }
+        }
+
+        // ✅ ESC-TASTE FÜR ZURÜCK
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                goBack();
+            }
+        });
+
+        // ✅ KEIN AUTO-PRINT - NUR MANUELL ÜBER BUTTON
+        // Du siehst alles, druckst nur wenn du willst
+
+        // ✅ MOBILE-FRIENDLY OPTIMIERUNGEN
+        if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches) {
+            document.addEventListener('DOMContentLoaded', function() {
+                const meta = document.createElement('meta');
+                meta.name = 'viewport';
+                meta.content = 'width=device-width, initial-scale=0.9';
+                document.getElementsByTagName('head')[0].appendChild(meta);
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1468 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAUSCH - Dashboard</title>
+    <style>
+        :root {
+            --primary-dark: #4a5568;
+            --primary-blue: #3498db;
+            --background-light: #f8f9fa;
+            --text-dark: #2c3e50;
+            --text-light: #6c757d;
+            --border-color: #dee2e6;
+            --success: #3e9e12bd;
+            --warning: #ffdd00d0;
+            --danger:#fa2d41c3;
+            --white: #ffffffB3;
+            --light-gray: #e9ecef;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-blue) 100%);
+            min-height: 100vh;
+            padding: 15px;
+            font-size: 14px;
+        }
+
+        .main-container {
+            max-width: 100%;
+            margin: 0 auto;
+            background: var(--primary-dark);
+            border-radius: 20px;
+            padding: 15px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .main-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary-blue), #2980b9);
+            border-radius: 20px 20px 0 0;
+        }
+
+        /* ✅ MOBILE-FIRST HEADER */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            color: var(--white);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            order: 1;
+        }
+
+        .logo {
+            background: var(--white);
+            color: var(--text-dark);
+            font-size: 1.2em;
+            font-weight: bold;
+            padding: 8px 12px;
+            border-radius: 8px;
+            text-align: center;
+            min-width: 50px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 0.85em;
+            order: 2;
+        }
+
+        .user-info div {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .user-info a {
+            color: var(--light-gray);
+            text-decoration: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .user-info a:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* ✅ COMPACT CONTROLS */
+        .controls-section {
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .controls-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+            align-items: stretch;
+        }
+
+        .controls-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-group {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .form-label {
+            color: var(--white);
+            font-weight: bold;
+            font-size: 0.8em;
+        }
+
+        .form-input, .form-select {
+            padding: 10px;
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--white);
+            color: var(--text-dark);
+            font-size: 13px;
+        }
+
+        .form-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 8px center;
+            background-repeat: no-repeat;
+            background-size: 16px;
+            padding-right: 30px;
+        }
+        .form-group select {
+    width: 100%;
+    max-width: 100%;
+    padding: 12px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 16px;
+    background: var(--white);
+    color: var(--text-dark);
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+        /* ✅ ICON BUTTONS FOR MANAGEMENT */
+        .management-controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .icon-btn {
+            background: var(--primary-blue);
+            color: var(--white);
+            border: none;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .icon-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 12px rgba(0,0,0,0.2);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: var(--white);
+        }
+
+        .btn-primary {
+            background: var(--primary-blue);
+            color: var(--white);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: var(--white);
+        }
+
+        .btn-secondary {
+            background: var(--text-light);
+            color: var(--white);
+        }
+
+        /* ✅ MOBILE PROJEKT CARDS */
+        .projekte-section {
+            color: var(--white);
+        }
+
+        .section-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .projekte-header {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+
+        .projekte-stats {
+            display: flex;
+            gap: 15px;
+            font-size: 0.8em;
+            color: var(--light-gray);
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .projekte-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .projekt-card {
+            background: var(--light-gray);
+            border-radius: 12px;
+            padding: 15px;
+            border: 2px solid var(--border-color);
+            transition: all 0.3s ease;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .projekt-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+
+        .projekt-card.status-beendet {
+            opacity: 0.8;
+            border-color: #6c757d;
+        }
+
+        .projekt-card.status-laufend {
+            border-color: var(--success);
+            box-shadow: 0 3px 12px rgba(40, 167, 69, 0.2);
+        }
+
+        .projekt-card.status-pausiert {
+            border-color: var(--warning);
+        }
+
+        .projekt-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            gap:10px;
+        }
+
+        #projektName, .projektKunde {
+            font-size: 1.1em;
+            color: var(--text-dark);
+            margin-bottom: 4px;
+            line-height: 1.2;
+            flex: 1;
+            min-height: 20px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .projekt-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            margin-top: 2px;
+        }
+
+        .projekt-status {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 0.7em;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .status-laufend {
+            background: var(--success);
+            color: var(--white);
+        }
+
+        .status-pausiert {
+            background: var(--warning);
+            color: var(--text-dark);
+        }
+
+        .status-beendet {
+            background: var(--text-light);
+            color: var(--white);
+        }
+
+        .status-gestoppt {
+            background: var(--danger);
+            color: var(--white);
+        }
+
+        .projekt-progress {
+            margin-bottom: 12px;
+        }
+
+        .progress-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            font-size: 0.85em;
+        }
+
+        .progress-label {
+            color: var(--text-dark);
+            font-weight: 500;
+            text-transform: capitalize;
+        }
+
+        .progress-value {
+            color: var(--text-light);
+            font-weight: bold;
+        }
+
+        .projekt-total {
+            border-top: 2px solid var(--border-color);
+            padding-top: 8px;
+            margin-top: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            color: var(--text-dark);
+        }
+
+        .projekt-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 12px;
+        }
+
+        .btn-sm {
+            padding: 6px 10px;
+            font-size: 11px;
+        }
+
+        /* ✅ BEENDETE PROJEKTE STYLING */
+        .beendet-projekt {
+            color: #000000 !important;
+            opacity: 0.8;
+        }
+
+        .beendet-kunde {
+            color: #000000 !important;
+            opacity: 0.8;
+        }
+
+        /* ✅ STICKY DELETE BUTTON MOBILE */
+        .sticky-delete-controls {
+            position: fixed;
+            bottom: 15px;
+            left: 15px;
+            right: 15px;
+            z-index: 999;
+            background: var(--white);
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+            border: 2px solid var(--danger);
+            transition: all 0.3s ease;
+        }
+
+        .sticky-delete-controls.hidden {
+            transform: translateY(100px);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .delete-info {
+            font-size: 11px;
+            color: var(--text-dark);
+            margin-bottom: 6px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .btn-sticky-delete {
+            background: var(--danger);
+            color: var(--white);
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            position: relative;
+        }
+
+        .selection-badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: var(--white);
+            color: var(--danger);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 10px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        /* ✅ MODALS MOBILE OPTIMIZED */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal.show {
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--white);
+            margin: 20px;
+            padding: 0;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 2px solid var(--border-color);
+            background: var(--primary-color);
+            color: white;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .close {
+            color: white !important;
+            font-size: 28px !important;
+            font-weight: bold !important;
+            cursor: pointer !important;
+            background: none !important;
+            border: none !important;
+            padding: 0 !important;
+            width: 30px !important;
+            height: 30px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            border-radius: 50% !important;
+            transition: background 0.3s ease !important;
+        }
+
+        .close:hover {
+            background: rgba(255, 255, 255, 0.2) !important;
+        }
+
+        /* ✅ MOBILE MODAL */
+        @media (max-width: 768px) {
+            .projekt-header {
+                display: block;
+            }
+            
+            .projekt-name, .projektKunde {
+                font-size: 0.9em;
+                width: 100%;
+                margin-bottom: 5px;
+            }
+            
+            .projekt-checkbox {
+                position: absolute;
+                top: 15px;
+                right: 15px;
+                width: 16px;
+                height: 16px;
+            }
+
+            .modal-content {
+                width: 95%;
+                margin: 10px;
+                max-height: 95vh;
+            }
+            
+            .modal-header {
+                padding: 15px;
+            }
+            
+            .close {
+                font-size: 24px !important;
+                width: 40px !important;
+                height: 40px !important;
+            }
+
+            .form-group select {
+                font-size: 14px !important;
+                padding: 10px !important;
+                width: calc(100% - 4px) !important;
+            }
+    
+            .kunde-select-container {
+                overflow: hidden !important;
+            }
+        }
+
+        .modal-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: var(--text-dark);
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .management-section {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .management-item {
+            background: var(--white);
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .management-title {
+            font-weight: bold;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+
+        .item-list {
+            max-height: 120px;
+            overflow-y: auto;
+        }
+
+        .item-entry {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+            border-bottom: 1px solid var(--light-gray);
+            font-size: 0.85em;
+        }
+
+        .item-entry:last-child {
+            border-bottom: none;
+        }
+
+        .delete-item {
+            background: var(--danger);
+            color: var(--white);
+            border: none;
+            padding: 2px 5px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 10px;
+        }
+
+        /* ✅ EXPORT PREVIEW MOBILE */
+        .export-preview {
+            background: var(--background-light);
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 12px;
+            border: 2px solid var(--border-color);
+        }
+
+        .export-preview h4 {
+            color: var(--text-dark);
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+
+        .export-projekt-item {
+            background: var(--white);
+            border-radius: 4px;
+            padding: 8px;
+            margin-bottom: 6px;
+            border-left: 3px solid var(--primary-blue);
+            font-size: 0.8em;
+        }
+
+        .export-projekt-name {
+            font-weight: bold;
+            color: var(--text-dark);
+            margin-bottom: 2px;
+        }
+
+        .export-projekt-details {
+            font-size: 0.75em;
+            color: var(--text-light);
+            line-height: 1.2;
+        }
+
+        .export-summary {
+            background: var(--primary-blue);
+            color: var(--white);
+            padding: 8px;
+            border-radius: 4px;
+            margin-top: 8px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 0.8em;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-light);
+        }
+
+        .empty-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        .alert {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            padding: 12px 15px;
+            border-radius: 6px;
+            font-weight: bold;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            font-size: 0.85em;
+        }
+
+        .alert-success {
+            background: var(--success);
+            color: var(--white);
+        }
+
+        .alert-error {
+            background: var(--danger);
+            color: var(--white);
+        }
+
+        /* ✅ DESKTOP RESPONSIVE */
+        @media (min-width: 768px) {
+            body {
+                padding: 20px;
+                font-size: 16px;
+            }
+
+            .main-container {
+                max-width: 1200px;
+                padding: 20px;
+            }
+
+            .header {
+                flex-wrap: nowrap;
+            }
+
+            .controls-row {
+                flex-direction: row;
+            }
+
+            .projekte-grid {
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                gap: 20px;
+            }
+
+            .projekte-header {
+                flex-direction: row;
+                justify-content: space-between;
+            }
+
+            .management-controls {
+                justify-content: flex-start;
+            }
+
+            .sticky-delete-controls {
+                left: auto;
+                right: 20px;
+                width: auto;
+                min-width: 200px;
+            }
+
+            .alert {
+                left: auto;
+                right: 20px;
+                width: auto;
+                max-width: 400px;
+            }
+
+            /* Desktop Icon Buttons mit Text */
+            .icon-btn {
+                width: auto;
+                padding: 10px 15px;
+                gap: 5px;
+            }
+
+            .icon-btn::after {
+                font-size: 12px;
+                font-weight: bold;
+            }
+
+            .icon-btn[onclick*="mitarbeiter"]::after {
+                content: "Mitarbeiter";
+            }
+
+            .icon-btn[onclick*="kunden"]::after {
+                content: "Kunden";
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .projekte-grid {
+                grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div id="alertContainer"></div> 
+        
+        <!-- ✅ MOBILE-FIRST HEADER -->
+        <div class="header">
+            <div class="logo-section">
+                <div class="logo">R<br><span style="font-size: 0.6em;">RAUSCH</span></div>
+            </div>
+            <div class="user-info">
+                <div>👤 {{ benutzer_name }}</div>
+                <div><a href="/logout">Abmelden</a></div>
+            </div>
+        </div>
+
+        <!-- Neues Projekt erstellen -->
+        <div class="controls-section">
+            <form id="projektForm" onsubmit="projektErstellen(event)">
+                <div class="controls-row">
+                    <div class="form-group">
+                        <label class="form-label">Projektname</label>
+                        <input type="text" class="form-input" id="projektName" placeholder="z.B. Einfamilienhaus Müller" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Kunde</label>
+                        <select class="form-select" id="projektKunde" required>
+                            <option value="">Kunde wählen...</option>
+                            {% for kunde in kunden %}
+                            <option value="{{ kunde }}">{{ kunde }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="controls-row">
+                    <button type="submit" class="btn btn-success" style="width: 100%;">📝 Neues Projekt erstellen</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- ✅ ICON MANAGEMENT CONTROLS -->
+        <div class="management-controls">
+            <button class="icon-btn" onclick="openModal('mitarbeiterModal')" title="Mitarbeiter verwalten">👥</button>
+            <button class="icon-btn" onclick="openModal('kundenModal')" title="Kunden verwalten">🏢</button>
+            <button class="icon-btn" onclick="openModal('exportModal')" title="Daten exportieren">📊</button>
+        </div>
+
+        <!-- Projekte Section -->
+        <div class="projekte-section">
+            <div class="section-title">Meine Projekte</div>
+            
+            <div class="projekte-header">
+                <div class="projekte-stats">
+                    <span>📊 {{ projekte|length }} gesamt</span>
+                    <span>🟢 {{ projekte|selectattr('status', 'equalto', 'laufend')|list|length }} aktiv</span>
+                    <span>🔴 {{ projekte|selectattr('status', 'equalto', 'beendet')|list|length }} beendet</span>
+                </div>
+            </div>
+
+            <!-- Projekte Grid -->
+            {% if projekte %}
+            <div class="projekte-grid">
+                {% for projekt in projekte %}
+                <div class="projekt-card status-{{ projekt.status }}" 
+                     data-projekt-id="{{ projekt.id }}" 
+                     data-projekt-status="{{ projekt.status }}"
+                     onclick="projektÖffnen({{ projekt.id }})">
+                    
+                    <div class="projekt-header">
+                        <div>
+                            <div class="projekt-name {% if projekt.status == 'beendet' %}beendet-projekt{% endif %}">
+                                {{ projekt.name or 'Projekt #' + projekt.id|string }}
+                            </div>
+                            <div class="projekt-kunde {% if projekt.status == 'beendet' %}beendet-kunde{% endif %}">
+                                👤 {{ projekt.kunde or 'Kunde unbekannt' }}
+                            </div>
+                        </div>
+                        <input type="checkbox" 
+                               class="projekt-checkbox" 
+                               id="projekt_{{ projekt.id }}"
+                               onclick="event.stopPropagation(); toggleProjektAuswahl({{ projekt.id }}, '{{ projekt.status }}')">
+                    </div>
+
+                    <div class="projekt-status status-{{ projekt.status }}">
+                        {{ projekt.status|title }}
+                    </div>
+
+                    <div class="projekt-progress">
+                        {% for tb_name, tb_data in projekt.teilbereiche.items() %}
+                        <div class="progress-item">
+                            <span class="progress-label">{{ tb_name|title }}:</span>
+                            <span class="progress-value">
+                                {% if tb_data.gesamt_minuten < 60 %}
+                                    {{ tb_data.gesamt_minuten }}min
+                                {% else %}
+                                    {{ tb_data.gesamt_minuten // 60 }}h {{ tb_data.gesamt_minuten % 60 }}min
+                                {% endif %}
+                            </span>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="projekt-total">
+                        <span>Gesamt:</span>
+                        {% set gesamt_minuten = projekt.teilbereiche.besprechung.gesamt_minuten + projekt.teilbereiche.zeichnung.gesamt_minuten + projekt.teilbereiche.aufmass.gesamt_minuten %}
+                        <span>
+                            {% if gesamt_minuten < 60 %}
+                                {{ gesamt_minuten }}min
+                            {% else %}
+                                {{ gesamt_minuten // 60 }}h {{ gesamt_minuten % 60 }}min
+                            {% endif %}
+                        </span>
+                    </div>
+
+                    <div class="projekt-actions">
+                        {% if projekt.status == 'beendet' %}
+                            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); berichtAnzeigen({{ projekt.id }})">📄 Bericht</button>
+                        {% else %}
+                            <button class="btn btn-success btn-sm" onclick="event.stopPropagation(); projektÖffnen({{ projekt.id }})">▶️ Bearbeiten</button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">📋</div>
+                <h3>Noch keine Projekte</h3>
+                <p>Erstelle dein erstes Projekt!</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- ✅ MODALS (сохраняем, но компактные) -->
+        <!-- Export Modal -->
+        <div id="exportModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-title">📊 Daten exportieren</div>
+                
+                <div class="management-section">
+                    <form id="exportForm">
+                        <div class="form-group">
+                            <label class="form-label">📅 Von Datum:</label>
+                            <input type="date" class="form-input" id="exportVonDatum" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">📅 Bis Datum:</label>
+                            <input type="date" class="form-input" id="exportBisDatum" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">🎯 Format:</label>
+                            <select class="form-select" id="exportFormat">
+                                <option value="pdf">📄 PDF-Bericht</option>
+                            </select>
+                        </div>
+                        
+                        <div class="export-preview" id="exportPreview" style="display: none;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <h4>🔍 Vorschau:</h4>
+                                <button class="btn btn-primary btn-sm" onclick="vorschauDrucken()">🖨️ Drucken</button>
+                            </div>
+                            <div id="exportProjekteListe"></div>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="modal-buttons">
+                    <button class="btn btn-primary" onclick="exportVorschau()">🔍 Vorschau</button>
+                    <button class="btn btn-secondary" onclick="closeModal('exportModal')">Abbrechen</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mitarbeiter Modal -->
+        <div id="mitarbeiterModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-title">👥 Mitarbeiter verwalten</div>
+                
+                <div class="management-section">
+                    <form id="mitarbeiterForm">
+                        <div class="form-group">
+                            <input type="text" class="form-input" id="neuerMitarbeiter" placeholder="Mitarbeiter Name" required>
+                        </div>
+                        <button type="submit" class="btn btn-success">➕ Hinzufügen</button>
+                    </form>
+                </div>
+
+                <div class="management-item">
+                    <div class="management-title">Aktuelle Mitarbeiter:</div>
+                    <div class="item-list" id="mitarbeiterListe">
+                        {% for ma in mitarbeiter %}
+                        <div class="item-entry">
+                            <span>{{ ma }}</span>
+                            <button class="delete-item" onclick="mitarbeiterLöschen('{{ ma }}')">❌</button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="modal-buttons">
+                    <button class="btn btn-secondary" onclick="closeModal('mitarbeiterModal')">Schließen</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kunden Modal -->
+        <div id="kundenModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-title">🏢 Kunden verwalten</div>
+                
+                <div class="management-section">
+                    <form id="kundenForm">
+                        <div class="form-group">
+                            <input type="text" class="form-input" id="neuerKunde" placeholder="Kunde/Firma Name" required>
+                        </div>
+                        <button type="submit" class="btn btn-success">➕ Hinzufügen</button>
+                    </form>
+                </div>
+
+                <div class="management-item">
+                    <div class="management-title">Aktuelle Kunden:</div>
+                    <div class="item-list" id="kundenListe">
+                        {% for kunde in kunden %}
+                        <div class="item-entry">
+                            <span>{{ kunde }}</span>
+                            <button class="delete-item" onclick="kundeLöschen('{{ kunde }}')">❌</button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="modal-buttons">
+                    <button class="btn btn-secondary" onclick="closeModal('kundenModal')">Schließen</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ✅ MOBILE STICKY DELETE BUTTON -->
+        <div id="stickyDeleteControls" class="sticky-delete-controls hidden">
+            <div class="delete-info">
+                <span id="selectedCount">0</span> Projekt(e) ausgewählt
+            </div>
+            <button class="btn-sticky-delete" id="stickyLöschenBtn" onclick="projekte_löschen()" disabled>
+                🗑️ Ausgewählte löschen
+                <div id="selectionBadge" class="selection-badge">0</div>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ✅ Alle JavaScript-Funktionen bleiben gleich, nur optimiert
+        function projektErstellen(event) {
+            event.preventDefault();
+            
+            const name = document.getElementById('projektName').value.trim();
+            const kunde = document.getElementById('projektKunde').value.trim();
+            
+            if (!name) {
+                showAlert('❌ Projektname ist erforderlich!');
+                return;
+            }
+            
+            if (!kunde) {
+                showAlert('❌ Kunde ist erforderlich!');
+                return;
+            }
+            
+            fetch('/projekt/neu', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `name=${encodeURIComponent(name)}&kunde=${encodeURIComponent(kunde)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showAlert('✅ Projekt erfolgreich erstellt!', 'success');
+                    document.getElementById('projektName').value = '';
+                    document.getElementById('projektKunde').value = '';
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showAlert('❌ ' + (data.message || 'Fehler beim Erstellen'));
+                }
+            })
+            .catch(error => {
+                showAlert('❌ Fehler beim Erstellen des Projekts');
+            });
+        }
+
+        function projektÖffnen(projektId) {
+            window.location.href = `/projekt/${projektId}`;
+        }
+
+        function berichtAnzeigen(projektId) {
+            window.open(`/projekt/${projektId}/bericht`, '_blank');
+        }
+
+        function toggleProjektAuswahl(projektId, status) {
+            updateLöschenButton();
+        }
+
+        function updateLöschenButton() {
+            const checkedBoxes = document.querySelectorAll('.projekt-checkbox:checked');
+            const count = checkedBoxes.length;
+            
+            const stickyControls = document.getElementById('stickyDeleteControls');
+            const stickyBtn = document.getElementById('stickyLöschenBtn');
+            const selectedCount = document.getElementById('selectedCount');
+            const selectionBadge = document.getElementById('selectionBadge');
+            
+            if (count > 0) {
+                stickyControls.classList.remove('hidden');
+                stickyBtn.disabled = false;
+                selectedCount.textContent = count;
+                selectionBadge.textContent = count;
+                selectionBadge.style.display = 'flex';
+            } else {
+                stickyControls.classList.add('hidden');
+                stickyBtn.disabled = true;
+                selectionBadge.style.display = 'none';
+            }
+        }
+
+        function projekte_löschen() {
+            const checkedBoxes = document.querySelectorAll('.projekt-checkbox:checked');
+            const projektIds = [];
+            
+            checkedBoxes.forEach(checkbox => {
+                const projektId = checkbox.id.replace('projekt_', '');
+                if (projektId && !isNaN(projektId)) {
+                    projektIds.push(parseInt(projektId));
+                }
+            });
+            
+            if (projektIds.length === 0) {
+                showAlert('❌ Keine Projekte ausgewählt!');
+                return;
+            }
+            
+            if (confirm(`⚠️ ${projektIds.length} Projekt(e) wirklich löschen?`)) {
+                fetch('/projekte/löschen', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({projekt_ids: projektIds})
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showAlert('✅ Projekte erfolgreich gelöscht!', 'success');
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        showAlert('❌ Fehler: ' + (data.message || 'Unbekannter Fehler'));
+                    }
+                })
+                .catch(error => {
+                    showAlert('❌ Netzwerk-Fehler beim Löschen!');
+                });
+            }
+        }
+
+        // ✅ VERBESSERTE EXPORT-VORSCHAU FUNKTION
+        function exportVorschau() {
+            const vonDatum = document.getElementById('exportVonDatum').value;
+            const bisDatum = document.getElementById('exportBisDatum').value;
+            
+            if (!vonDatum || !bisDatum) {
+                alert('Bitte beide Datumsfelder ausfüllen');
+                return;
+            }
+            
+            fetch('/export/vorschau', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    von_datum: vonDatum,
+                    bis_datum: bisDatum
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // ✅ NEUE PARAMETER HINZUGEFÜGT
+                    zeigeExportVorschau(
+                        data.projekte, 
+                        data.gesamt_zeit,
+                        data.gesamt_besprechung,
+                        data.gesamt_zeichnung,
+                        data.gesamt_aufmass
+                    );
+                } else {
+                    alert('Fehler: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Fehler beim Laden der Vorschau');
+            });
+        }
+
+        // ✅ VERBESSERTE VORSCHAU-ANZEIGE FUNKTION
+        function zeigeExportVorschau(projekte, gesamtZeit, gesamtBesprechung, gesamtZeichnung, gesamtAufmass) {
+            const vorschauDiv = document.getElementById('exportProjekteListe');
+            
+            let html = '';
+            
+            projekte.forEach(projekt => {
+                html += `
+                    <div class="export-projekt-item">
+                        <div class="export-projekt-name">${projekt.name}</div>
+                        <div class="export-projekt-details">
+                            👤 ${projekt.kunde} | 
+                            📅 ${projekt.erstellt_datum} | 
+                            🏁 ${projekt.beendet_datum} | 
+                            ⏱️ ${projekt.gesamt_zeit}
+                            <br>
+                            📋 Besprechung: ${projekt.besprechung_zeit} | 
+                            ✏️ Zeichnung: ${projekt.zeichnung_zeit} | 
+                            📏 Aufmaß: ${projekt.aufmass_zeit}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            // ✅ DETAILLIERTE GESAMT-ZUSAMMENFASSUNG
+            html += `
+                <div class="export-summary">
+                    📊 GESAMT: ${gesamtZeit} | 
+                    📋 Besprechung: ${gesamtBesprechung} | 
+                    ✏️ Zeichnung: ${gesamtZeichnung} | 
+                    📏 Aufmaß: ${gesamtAufmass}
+                </div>
+            `;
+            
+            vorschauDiv.innerHTML = html;
+            document.getElementById('exportPreview').style.display = 'block';
+            // Drucken-Button aktivieren falls vorhanden
+            const druckBtn = document.querySelector('button[onclick="vorschauDrucken()"]');
+            if (druckBtn) druckBtn.style.display = 'inline-block';
+        }
+
+        function datenExportieren() {
+            const vonDatum = document.getElementById('exportVonDatum').value;
+            const bisDatum = document.getElementById('exportBisDatum').value;
+            const format = document.getElementById('exportFormat').value;
+            
+            const exportUrl = `/export/${format}?von=${vonDatum}&bis=${bisDatum}`;
+            
+            if (format === 'pdf') {
+                window.open(exportUrl, '_blank');
+            } else {
+                window.location.href = exportUrl;
+            }
+            
+            closeModal('exportModal');
+        }
+
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = 'flex';
+                
+                if (modalId === 'exportModal') {
+                    const heute = new Date().toISOString().split('T')[0];
+                    const vor30Tagen = new Date();
+                    vor30Tagen.setDate(vor30Tagen.getDate() - 30);
+                    
+                    document.getElementById('exportVonDatum').value = vor30Tagen.toISOString().split('T')[0];
+                    document.getElementById('exportBisDatum').value = heute;
+                    document.getElementById('exportPreview').style.display = 'none';
+                    document.getElementById('exportBtn').disabled = true;
+                }
+            }
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function showAlert(message, type = 'error') {
+            const alertContainer = document.getElementById('alertContainer');
+            alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            
+            setTimeout(() => {
+                alertContainer.innerHTML = '';
+            }, 3000);
+        }
+
+        // ✅ Management Functions
+        document.getElementById('mitarbeiterForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const name = document.getElementById('neuerMitarbeiter').value.trim();
+            if (!name) return;
+            
+            fetch('/mitarbeiter/hinzufügen', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `name=${encodeURIComponent(name)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showAlert('✅ Mitarbeiter hinzugefügt!', 'success');
+                    location.reload();
+                } else {
+                    showAlert('❌ ' + data.message);
+                }
+            });
+        });
+
+        document.getElementById('kundenForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const name = document.getElementById('neuerKunde').value.trim();
+            if (!name) return;
+            
+            fetch('/kunde/hinzufügen', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `name=${encodeURIComponent(name)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showAlert('✅ Kunde hinzugefügt!', 'success');
+                    location.reload();
+                } else {
+                    showAlert('❌ ' + data.message);
+                }
+            });
+        });
+
+        function mitarbeiterLöschen(name) {
+            if (confirm(`Mitarbeiter "${name}" wirklich löschen?`)) {
+                fetch('/mitarbeiter/löschen', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `name=${encodeURIComponent(name)}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showAlert('✅ Mitarbeiter gelöscht!', 'success');
+                        location.reload();
+                    }
+                });
+            }
+        }
+
+        function kundeLöschen(name) {
+            if (confirm(`Kunde "${name}" wirklich löschen?`)) {
+                fetch('/kunde/löschen', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `name=${encodeURIComponent(name)}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showAlert('✅ Kunde gelöscht!', 'success');
+                        location.reload();
+                    }
+                });
+            }
+        }
+
+        // Modal außerhalb schließen
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        }
+
+        // Page Load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateLöschenButton();
+        });
+
+        // ✅ MODAL SCHLIESSEN FIXES
+        document.addEventListener('DOMContentLoaded', function() {
+            // X-Button klickbar machen
+            document.querySelectorAll('.close').forEach(closeBtn => {
+                closeBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Close button clicked');
+                    
+                    const modal = this.closest('.modal');
+                    if (modal) {
+                        modal.classList.remove('show');
+                        modal.style.display = 'none';
+                    }
+                });
+            });
+            
+            // Außerhalb Modal klicken = schließen
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        this.classList.remove('show');
+                        this.style.display = 'none';
+                    }
+                });
+            });
+            
+            // ESC-Taste = schließen
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    document.querySelectorAll('.modal.show').forEach(modal => {
+                        modal.classList.remove('show');
+                        modal.style.display = 'none';
+                    });
+                }
+            });
+        });
+
+        function vorschauDrucken() {
+            const vonDatum = document.getElementById('exportVonDatum').value;
+            const bisDatum = document.getElementById('exportBisDatum').value;
+            
+            // Backend-Route für PDF aufrufen
+            const pdfUrl = `/export/vorschau-pdf?von=${vonDatum}&bis=${bisDatum}`;
+            
+            // PDF in neuem Tab öffnen
+            window.open(pdfUrl, '_blank');
+        }
+    </script>
+</body>
+</html>
