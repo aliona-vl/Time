@@ -539,50 +539,7 @@ def projekt_beenden(projekt_id):
             'message': f'Server-Fehler: {str(e)}'
         }), 500
     
-@app.route('/projekt/<int:projekt_id>/bericht')
-@login_required
-def projekt_bericht(projekt_id):
-    try:
-        print(f"📊 Bericht für Projekt {projekt_id}")
-        
-        # Datenbankverbindung
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # Projekt-Details abrufen
-        cursor.execute('SELECT id, name, kunde, status FROM projekte WHERE id = %s', (projekt_id,))
-        projekt = cursor.fetchone()
-        
-        if not projekt:
-            conn.close()
-            return "Projekt nicht gefunden", 404
-        
-        # Zeiterfassung für dieses Projekt
-        cursor.execute('''
-            SELECT datum, start_zeit, ende_zeit, minuten, beschreibung 
-            FROM zeiterfassung 
-            WHERE projekt_id = %s 
-            ORDER BY datum DESC, start_zeit DESC
-        ''', (projekt_id,))
-        
-        zeiten = cursor.fetchall()
-        conn.close()
-        
-        # Gesamt-Minuten berechnen
-        gesamt_minuten = sum(zeit[3] or 0 for zeit in zeiten) if zeiten else 0
-        gesamt_stunden = gesamt_minuten / 60
-        
-        return render_template('projekt_bericht.html', 
-                             projekt=projekt,
-                             zeiten=zeiten,
-                             gesamt_minuten=gesamt_minuten,
-                             gesamt_stunden=round(gesamt_stunden, 2))
-                             
-    except Exception as e:
-        print(f"❌ Fehler beim Bericht: {e}")
-        import traceback
-        traceback.print_exc()
-        return f"Fehler beim Laden des Berichts: {e}", 500
+
 @app.route('/mitarbeiter/hinzufügen', methods=['POST'])
 @login_required
 def mitarbeiter_hinzufügen():
