@@ -387,52 +387,7 @@
                 goBack();
             }
         });
-        // ✅ SEPARATE EXPORT-MODAL FUNKTIONEN
-
-function openExportModal() {
-    console.log('Opening Export Modal...');
-    
-    // Modal anzeigen
-    const modal = document.getElementById('exportModal');
-    if (!modal) {
-        console.error('Export Modal nicht gefunden!');
-        alert('Export-Modal nicht gefunden. Bitte Seite neu laden.');
-        return;
-    }
-    
-    modal.style.display = 'block';
-    
-    // Standard-Datumsbereich setzen (letzte 30 Tage)
-    const heute = new Date();
-    const vor30Tagen = new Date();
-    vor30Tagen.setDate(heute.getDate() - 30);
-    
-    // Datum-Felder suchen und setzen
-    const vonDatumField = document.getElementById('vonDatum');
-    const bisDatumField = document.getElementById('bisDatum');
-    
-    if (vonDatumField && bisDatumField) {
-        vonDatumField.value = vor30Tagen.toISOString().split('T')[0];
-        bisDatumField.value = heute.toISOString().split('T')[0];
         
-        console.log('Standard-Daten gesetzt:', {
-            von: vonDatumField.value,
-            bis: bisDatumField.value
-        });
-    } else {
-        console.error('Datum-Felder nicht gefunden!');
-    }
-}
-
-function closeExportModal() {
-    console.log('Closing Export Modal...');
-    const modal = document.getElementById('exportModal');
-    if (modal) {
-        modal.style.display = 'none';
-    }
-}
-
-
     </script>
 </body>
 </html>

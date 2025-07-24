@@ -319,7 +319,7 @@
             gap:10px;
         }
 
-        .projekt-name, .projekt-kunde {
+        #projektName, .projektKunde {
             font-size: 1.1em;
             color: var(--text-dark);
             margin-bottom: 4px;
@@ -514,7 +514,7 @@
         .modal-content {
             background: var(--white);
             margin: 20px;
-            padding: 20px;
+            padding: 0;
             border-radius: 12px;
             width: 90%;
             max-width: 800px;
@@ -524,8 +524,19 @@
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
         }
 
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 2px solid var(--border-color);
+            background: var(--primary-color);
+            color: white;
+            border-radius: 12px 12px 0 0;
+        }
+
         .close {
-            color: var(--text-dark) !important;
+            color: white !important;
             font-size: 28px !important;
             font-weight: bold !important;
             cursor: pointer !important;
@@ -539,13 +550,10 @@
             justify-content: center !important;
             border-radius: 50% !important;
             transition: background 0.3s ease !important;
-            position: absolute !important;
-            top: 10px !important;
-            right: 10px !important;
         }
 
         .close:hover {
-            background: rgba(0, 0, 0, 0.1) !important;
+            background: rgba(255, 255, 255, 0.2) !important;
         }
 
         /* ✅ MOBILE MODAL */
@@ -554,7 +562,7 @@
                 display: block;
             }
             
-            .projekt-name, .projekt-kunde {
+            .projekt-name, .projektKunde {
                 font-size: 0.9em;
                 width: 100%;
                 margin-bottom: 5px;
@@ -572,6 +580,9 @@
                 width: 95%;
                 margin: 10px;
                 max-height: 95vh;
+            }
+            
+            .modal-header {
                 padding: 15px;
             }
             
@@ -946,37 +957,44 @@
             {% endif %}
         </div>
 
+        <!-- ✅ MODALS (сохраняем, но компактные) -->
         <!-- Export Modal -->
         <div id="exportModal" class="modal">
             <div class="modal-content">
-                <span class="close" onclick="closeExportModal()">&times;</span>
                 <div class="modal-title">📊 Daten exportieren</div>
                 
                 <div class="management-section">
                     <form id="exportForm">
                         <div class="form-group">
                             <label class="form-label">📅 Von Datum:</label>
-                            <input type="date" class="form-input" id="vonDatum" name="von_datum" required>
+                            <input type="date" class="form-input" id="exportVonDatum" required>
                         </div>
                         
                         <div class="form-group">
                             <label class="form-label">📅 Bis Datum:</label>
-                            <input type="date" class="form-input" id="bisDatum" name="bis_datum" required>
+                            <input type="date" class="form-input" id="exportBisDatum" required>
                         </div>
                         
                         <div class="form-group">
                             <label class="form-label">🎯 Format:</label>
-                            <div>
-                                <input type="radio" id="formatPdf" name="format" value="pdf" checked>
-                                <label for="formatPdf">📄 PDF-Bericht</label>
+                            <select class="form-select" id="exportFormat">
+                                <option value="pdf">📄 PDF-Bericht</option>
+                            </select>
+                        </div>
+                        
+                        <div class="export-preview" id="exportPreview" style="display: none;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <h4>🔍 Vorschau:</h4>
+                                <button class="btn btn-primary btn-sm" onclick="vorschauDrucken()">🖨️ Drucken</button>
                             </div>
+                            <div id="exportProjekteListe"></div>
                         </div>
                     </form>
                 </div>
 
                 <div class="modal-buttons">
                     <button class="btn btn-primary" onclick="exportVorschau()">🔍 Vorschau</button>
-                    <button class="btn btn-secondary" onclick="closeExportModal()">Abbrechen</button>
+                    <button class="btn btn-secondary" onclick="closeModal('exportModal')">Abbrechen</button>
                 </div>
             </div>
         </div>
@@ -984,7 +1002,6 @@
         <!-- Mitarbeiter Modal -->
         <div id="mitarbeiterModal" class="modal">
             <div class="modal-content">
-                <span class="close" onclick="closeModal('mitarbeiterModal')">&times;</span>
                 <div class="modal-title">👥 Mitarbeiter verwalten</div>
                 
                 <div class="management-section">
@@ -1017,7 +1034,6 @@
         <!-- Kunden Modal -->
         <div id="kundenModal" class="modal">
             <div class="modal-content">
-                <span class="close" onclick="closeModal('kundenModal')">&times;</span>
                 <div class="modal-title">🏢 Kunden verwalten</div>
                 
                 <div class="management-section">
@@ -1060,46 +1076,123 @@
     </div>
 
     <script>
-// ✅ EXPORT-MODAL FUNKTIONEN
-function openExportModal() {
-    console.log('🚀 Opening Export Modal...');
-    
-    const modal = document.getElementById('exportModal');
-    if (!modal) {
-        alert('Export-Modal nicht gefunden!');
-        return;
-    }
-    
-    modal.style.display = 'flex';
-    console.log('✅ Modal angezeigt');
-    
-    // Standard-Datumsbereich setzen (letzte 30 Tage)
-    const heute = new Date();
-    const vor30Tagen = new Date();
-    vor30Tagen.setDate(heute.getDate() - 30);
-    
-    const vonDatumField = document.getElementById('vonDatum');
-    const bisDatumField = document.getElementById('bisDatum');
-    
-    if (vonDatumField && bisDatumField) {
-        vonDatumField.value = vor30Tagen.toISOString().split('T')[0];
-        bisDatumField.value = heute.toISOString().split('T')[0];
-        console.log('✅ Standard-Daten gesetzt');
-    }
-}
+        // ✅ Alle JavaScript-Funktionen bleiben gleich, nur optimiert
+        function projektErstellen(event) {
+            event.preventDefault();
+            
+            const name = document.getElementById('projektName').value.trim();
+            const kunde = document.getElementById('projektKunde').value.trim();
+            
+            if (!name) {
+                showAlert('❌ Projektname ist erforderlich!');
+                return;
+            }
+            
+            if (!kunde) {
+                showAlert('❌ Kunde ist erforderlich!');
+                return;
+            }
+            
+            fetch('/projekt/neu', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `name=${encodeURIComponent(name)}&kunde=${encodeURIComponent(kunde)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showAlert('✅ Projekt erfolgreich erstellt!', 'success');
+                    document.getElementById('projektName').value = '';
+                    document.getElementById('projektKunde').value = '';
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showAlert('❌ ' + (data.message || 'Fehler beim Erstellen'));
+                }
+            })
+            .catch(error => {
+                showAlert('❌ Fehler beim Erstellen des Projekts');
+            });
+        }
 
-function closeExportModal() {
-    console.log('🔒 Closing Export Modal...');
-    const modal = document.getElementById('exportModal');
-    if (modal) {
-        modal.style.display = 'none';
-        console.log('✅ Modal geschlossen');
-    }
-}
+        function projektÖffnen(projektId) {
+            window.location.href = `/projekt/${projektId}`;
+        }
 
-function exportVorschau() {
-    console.log('🔍 Starting Export Preview...');
+        function berichtAnzeigen(projektId) {
+            window.open(`/projekt/${projektId}/bericht`, '_blank');
+        }
+
+        function toggleProjektAuswahl(projektId, status) {
+            updateLöschenButton();
+        }
+
+        function updateLöschenButton() {
+            const checkedBoxes = document.querySelectorAll('.projekt-checkbox:checked');
+            const count = checkedBoxes.length;
+            
+            const stickyControls = document.getElementById('stickyDeleteControls');
+            const stickyBtn = document.getElementById('stickyLöschenBtn');
+            const selectedCount = document.getElementById('selectedCount');
+            const selectionBadge = document.getElementById('selectionBadge');
+            
+            if (count > 0) {
+                stickyControls.classList.remove('hidden');
+                stickyBtn.disabled = false;
+                selectedCount.textContent = count;
+                selectionBadge.textContent = count;
+                selectionBadge.style.display = 'flex';
+            } else {
+                stickyControls.classList.add('hidden');
+                stickyBtn.disabled = true;
+                selectionBadge.style.display = 'none';
+            }
+        }
+
+        function projekte_löschen() {
+            const checkedBoxes = document.querySelectorAll('.projekt-checkbox:checked');
+            const projektIds = [];
+            
+            checkedBoxes.forEach(checkbox => {
+                const projektId = checkbox.id.replace('projekt_', '');
+                if (projektId && !isNaN(projektId)) {
+                    projektIds.push(parseInt(projektId));
+                }
+            });
+            
+            if (projektIds.length === 0) {
+                showAlert('❌ Keine Projekte ausgewählt!');
+                return;
+            }
+            
+            if (confirm(`⚠️ ${projektIds.length} Projekt(e) wirklich löschen?`)) {
+                fetch('/projekte/löschen', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({projekt_ids: projektIds})
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showAlert('✅ Projekte erfolgreich gelöscht!', 'success');
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        showAlert('❌ Fehler: ' + (data.message || 'Unbekannter Fehler'));
+                    }
+                })
+                .catch(error => {
+                    showAlert('❌ Netzwerk-Fehler beim Löschen!');
+                });
+            }
+        }
+
+       function exportVorschau() {
+    console.log('Starting Export Preview...');
     
+    // Werte aus den Input-Feldern holen
     const vonDatumField = document.getElementById('vonDatum');
     const bisDatumField = document.getElementById('bisDatum');
     const formatRadio = document.querySelector('input[name="format"]:checked');
@@ -1113,6 +1206,14 @@ function exportVorschau() {
     const bisDatum = bisDatumField.value;
     const format = formatRadio ? formatRadio.value : 'pdf';
     
+    // DEBUG: Werte in Konsole ausgeben
+    console.log('Export-Daten:', {
+        von: vonDatum,
+        bis: bisDatum,
+        format: format
+    });
+    
+    // Validierung
     if (!vonDatum || !bisDatum) {
         alert('Bitte wählen Sie Von- und Bis-Datum');
         return;
@@ -1123,269 +1224,262 @@ function exportVorschau() {
         return;
     }
     
-    // URL für Gesamt-Bericht erstellen
-    const url = '/gesamt-bericht?von=' + vonDatum + '&bis=' + bisDatum + '&format=' + format;
-    console.log('🌐 Opening URL:', url);
+    // Form-Daten sammeln
+    const formData = new FormData();
+    formData.append('von_datum', vonDatum);
+    formData.append('bis_datum', bisDatum);
+    formData.append('format', format);
     
-    // Neuer Tab öffnen
-    const newTab = window.open(url, '_blank');
-    if (!newTab) {
-        alert('Popup wurde blockiert. Bitte erlauben Sie Popups für diese Seite.');
-        return;
+    // DEBUG: FormData ausgeben
+    console.log('Sending FormData:');
+    for (let pair of formData.entries()) {
+        console.log(pair[0] + ': ' + pair[1]);
     }
     
-    // Modal schließen
-    closeExportModal();
-    showAlert('✅ Export-Vorschau geöffnet!', 'success');
-}
-
-// ✅ ALLE ANDEREN FUNKTIONEN (unverändert)
-function projektErstellen(event) {
-    event.preventDefault();
+    // Loading-Anzeige
+    const vorschauBtn = event.target;
+    const originalText = vorschauBtn.innerHTML;
+    vorschauBtn.innerHTML = '⏳ Lade...';
+    vorschauBtn.disabled = true;
     
-    const name = document.getElementById('projektName').value.trim();
-    const kunde = document.getElementById('projektKunde').value.trim();
-    
-    if (!name) {
-        showAlert('❌ Projektname ist erforderlich!');
-        return;
-    }
-    
-    if (!kunde) {
-        showAlert('❌ Kunde ist erforderlich!');
-        return;
-    }
-    
-    fetch('/projekt/neu', {
+    // Request senden
+    fetch('/export/vorschau', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: 'name=' + encodeURIComponent(name) + '&kunde=' + encodeURIComponent(kunde)
+        body: formData
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Response Status:', response.status);
+        return response.json();
+    })
     .then(data => {
+        console.log('Server Response:', data);
+        
+        // Button zurücksetzen
+        vorschauBtn.innerHTML = originalText;
+        vorschauBtn.disabled = false;
+        
         if (data.status === 'success') {
-            showAlert('✅ Projekt erfolgreich erstellt!', 'success');
-            document.getElementById('projektName').value = '';
-            document.getElementById('projektKunde').value = '';
-            setTimeout(() => location.reload(), 1000);
+            // Gesamt-Bericht Route öffnen
+            const url = `/gesamt-bericht?von=${vonDatum}&bis=${bisDatum}&format=${format}`;
+            console.log('Opening URL:', url);
+            
+            // Neuer Tab öffnen
+            window.open(url, '_blank');
+            
+            // Modal schließen
+            closeExportModal();
+            
+            // Success-Message
+            showMessage(`Export-Vorschau für ${data.anzahl_projekte} Projekt(e) geöffnet`, 'success');
         } else {
-            showAlert('❌ ' + (data.message || 'Fehler beim Erstellen'));
+            alert('Fehler bei Vorschau: ' + data.message);
         }
     })
     .catch(error => {
-        showAlert('❌ Fehler beim Erstellen des Projekts');
+        console.error('Export-Fehler:', error);
+        
+        // Button zurücksetzen
+        vorschauBtn.innerHTML = originalText;
+        vorschauBtn.disabled = false;
+        
+        alert('Netzwerk-Fehler bei Export-Vorschau');
     });
 }
 
-function projektÖffnen(projektId) {
-    window.location.href = '/projekt/' + projektId;
-}
-
-function berichtAnzeigen(projektId) {
-    window.open('/projekt/' + projektId + '/bericht', '_blank');
-}
-
-function toggleProjektAuswahl(projektId, status) {
-    updateLöschenButton();
-}
-
-function updateLöschenButton() {
-    const checkedBoxes = document.querySelectorAll('.projekt-checkbox:checked');
-    const count = checkedBoxes.length;
-    
-    const stickyControls = document.getElementById('stickyDeleteControls');
-    const stickyBtn = document.getElementById('stickyLöschenBtn');
-    const selectedCount = document.getElementById('selectedCount');
-    const selectionBadge = document.getElementById('selectionBadge');
-    
-    if (count > 0) {
-        stickyControls.classList.remove('hidden');
-        stickyBtn.disabled = false;
-        selectedCount.textContent = count;
-        selectionBadge.textContent = count;
-        selectionBadge.style.display = 'flex';
-    } else {
-        stickyControls.classList.add('hidden');
-        stickyBtn.disabled = true;
-        selectionBadge.style.display = 'none';
-    }
-}
-
-function projekte_löschen() {
-    const checkedBoxes = document.querySelectorAll('.projekt-checkbox:checked');
-    const projektIds = [];
-    
-    checkedBoxes.forEach(checkbox => {
-        const projektId = checkbox.id.replace('projekt_', '');
-        if (projektId && !isNaN(projektId)) {
-            projektIds.push(parseInt(projektId));
+// ✅ MODAL CLOSE BEI ESC
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        const exportModal = document.getElementById('exportModal');
+        if (exportModal && exportModal.style.display === 'block') {
+            closeExportModal();
         }
-    });
-    
-    if (projektIds.length === 0) {
-        showAlert('❌ Keine Projekte ausgewählt!');
-        return;
     }
-    
-    if (confirm('⚠️ ' + projektIds.length + ' Projekt(e) wirklich löschen?')) {
-        fetch('/projekte/löschen', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({projekt_ids: projektIds})
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                showAlert('✅ Projekte erfolgreich gelöscht!', 'success');
-                setTimeout(() => location.reload(), 1000);
-            } else {
-                showAlert('❌ Fehler: ' + (data.message || 'Unbekannter Fehler'));
-            }
-        })
-        .catch(error => {
-            showAlert('❌ Netzwerk-Fehler beim Löschen!');
-        });
-    }
-}
-
-function openModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.display = 'flex';
-    }
-}
-
-function closeModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.display = 'none';
-    }
-}
-
-function showAlert(message, type) {
-    type = type || 'error';
-    const alertContainer = document.getElementById('alertContainer');
-    alertContainer.innerHTML = '<div class="alert alert-' + type + '">' + message + '</div>';
-    
-    setTimeout(() => {
-        alertContainer.innerHTML = '';
-    }, 3000);
-}
-
-// Management Functions
-document.getElementById('mitarbeiterForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const name = document.getElementById('neuerMitarbeiter').value.trim();
-    if (!name) return;
-    
-    fetch('/mitarbeiter/hinzufügen', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: 'name=' + encodeURIComponent(name)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            showAlert('✅ Mitarbeiter hinzugefügt!', 'success');
-            location.reload();
-        } else {
-            showAlert('❌ ' + data.message);
-        }
-    });
 });
 
-document.getElementById('kundenForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const name = document.getElementById('neuerKunde').value.trim();
-    if (!name) return;
-    
-    fetch('/kunde/hinzufügen', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: 'name=' + encodeURIComponent(name)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            showAlert('✅ Kunde hinzugefügt!', 'success');
-            location.reload();
-        } else {
-            showAlert('❌ ' + data.message);
-        }
-    });
+// ✅ MODAL CLOSE BEI BACKGROUND-CLICK
+document.addEventListener('click', function(event) {
+    const exportModal = document.getElementById('exportModal');
+    if (event.target === exportModal) {
+        closeExportModal();
+    }
 });
-
-function mitarbeiterLöschen(name) {
-    if (confirm('Mitarbeiter "' + name + '" wirklich löschen?')) {
-        fetch('/mitarbeiter/löschen', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: 'name=' + encodeURIComponent(name)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                showAlert('✅ Mitarbeiter gelöscht!', 'success');
-                location.reload();
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = 'flex';
+                
+                if (modalId === 'exportModal') {
+                    const heute = new Date().toISOString().split('T')[0];
+                    const vor30Tagen = new Date();
+                    vor30Tagen.setDate(vor30Tagen.getDate() - 30);
+                    
+                    document.getElementById('exportVonDatum').value = vor30Tagen.toISOString().split('T')[0];
+                    document.getElementById('exportBisDatum').value = heute;
+                    document.getElementById('exportPreview').style.display = 'none';
+                    document.getElementById('exportBtn').disabled = true;
+                }
             }
-        });
-    }
-}
+        }
 
-function kundeLöschen(name) {
-    if (confirm('Kunde "' + name + '" wirklich löschen?')) {
-        fetch('/kunde/löschen', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: 'name=' + encodeURIComponent(name)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                showAlert('✅ Kunde gelöscht!', 'success');
-                location.reload();
-            }
-        });
-    }
-}
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
 
-// Event Listeners
-document.addEventListener('DOMContentLoaded', function() {
-    updateLöschenButton();
-    
-    // ESC-Taste = Modal schließen
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            const openModals = document.querySelectorAll('.modal[style*="flex"]');
-            openModals.forEach(modal => {
-                modal.style.display = 'none';
+        function showAlert(message, type = 'error') {
+            const alertContainer = document.getElementById('alertContainer');
+            alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            
+            setTimeout(() => {
+                alertContainer.innerHTML = '';
+            }, 3000);
+        }
+
+        // ✅ Management Functions
+        document.getElementById('mitarbeiterForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const name = document.getElementById('neuerMitarbeiter').value.trim();
+            if (!name) return;
+            
+            fetch('/mitarbeiter/hinzufügen', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `name=${encodeURIComponent(name)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showAlert('✅ Mitarbeiter hinzugefügt!', 'success');
+                    location.reload();
+                } else {
+                    showAlert('❌ ' + data.message);
+                }
             });
-        }
-    });
-    
-    // Außerhalb Modal klicken = schließen
-    document.querySelectorAll('.modal').forEach(modal => {
-        modal.addEventListener('click', function(e) {
-            if (e.target === this) {
-                this.style.display = 'none';
-            }
         });
-    });
-});
 
-console.log('✅ Dashboard JavaScript geladen');
-</script>
+        document.getElementById('kundenForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const name = document.getElementById('neuerKunde').value.trim();
+            if (!name) return;
+            
+            fetch('/kunde/hinzufügen', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `name=${encodeURIComponent(name)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showAlert('✅ Kunde hinzugefügt!', 'success');
+                    location.reload();
+                } else {
+                    showAlert('❌ ' + data.message);
+                }
+            });
+        });
+
+        function mitarbeiterLöschen(name) {
+            if (confirm(`Mitarbeiter "${name}" wirklich löschen?`)) {
+                fetch('/mitarbeiter/löschen', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `name=${encodeURIComponent(name)}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showAlert('✅ Mitarbeiter gelöscht!', 'success');
+                        location.reload();
+                    }
+                });
+            }
+        }
+
+        function kundeLöschen(name) {
+            if (confirm(`Kunde "${name}" wirklich löschen?`)) {
+                fetch('/kunde/löschen', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `name=${encodeURIComponent(name)}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showAlert('✅ Kunde gelöscht!', 'success');
+                        location.reload();
+                    }
+                });
+            }
+        }
+
+        // Modal außerhalb schließen
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        }
+
+        // Page Load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateLöschenButton();
+        });
+
+        // ✅ MODAL SCHLIESSEN FIXES
+        document.addEventListener('DOMContentLoaded', function() {
+            // X-Button klickbar machen
+            document.querySelectorAll('.close').forEach(closeBtn => {
+                closeBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Close button clicked');
+                    
+                    const modal = this.closest('.modal');
+                    if (modal) {
+                        modal.classList.remove('show');
+                        modal.style.display = 'none';
+                    }
+                });
+            });
+            
+            // Außerhalb Modal klicken = schließen
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        this.classList.remove('show');
+                        this.style.display = 'none';
+                    }
+                });
+            });
+            
+            // ESC-Taste = schließen
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    document.querySelectorAll('.modal.show').forEach(modal => {
+                        modal.classList.remove('show');
+                        modal.style.display = 'none';
+                    });
+                }
+            });
+        });
+
+        function vorschauDrucken() {
+            const vonDatum = document.getElementById('exportVonDatum').value;
+            const bisDatum = document.getElementById('exportBisDatum').value;
+            
+            // Backend-Route für PDF aufrufen
+            const pdfUrl = `/export/vorschau-pdf?von=${vonDatum}&bis=${bisDatum}`;
+            
+            // PDF in neuem Tab öffnen
+            window.open(pdfUrl, '_blank');
+        }
+        
+    </script>
 </body>
 </html>
