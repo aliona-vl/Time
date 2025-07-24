@@ -710,7 +710,7 @@ def export_vorschau():
         })
 @app.route('/gesamt-bericht')
 def gesamt_bericht():
-    """Gesamt-Bericht mit PostgreSQL Hinweis: erstellt_am (nicht erstellt_an)"""
+    """Gesamt-Bericht mit sicherer ID-Extraktion"""
     try:
         von_datum_str = request.args.get('von', '')
         bis_datum_str = request.args.get('bis', '')
@@ -720,7 +720,7 @@ def gesamt_bericht():
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # ✅ PROJEKTE mit PostgreSQL-korrigierter Spalte: erstellt_am
+        # ✅ PROJEKTE holen
         projekte_query = '''
             SELECT DISTINCT p.id, p.name, p.kunde, p.status, p.erstellt_am
             FROM projekte p
@@ -733,17 +733,35 @@ def gesamt_bericht():
         columns = [desc[0] for desc in cur.description]
         projekte_dict = [dict(zip(columns, row)) for row in projekte_raw]
         
+        print(f"🔍 Columns: {columns}")
         print(f"🔍 Gefundene Projekte: {len(projekte_dict)}")
         
         # PROJEKTE MIT SITZUNGEN AUFBAUEN
         projekte = []
         
         for projekt in projekte_dict:
-            projekt_id = projekt['id']
+            # ✅ SICHERE ID-EXTRAKTION
+            print(f"🔍 DEBUG projekt dict: {projekt}")
             
-            print(f"🔍 Verarbeite Projekt ID: {projekt_id} ({type(projekt_id)})")
+            # ID sicher extrahieren
+            if 'id' in projekt and projekt['id'] != 'id':
+                projekt_id = projekt['id']
+            elif columns and len(projekt.values()) > 0:
+                # Erste Spalte sollte ID sein
+                projekt_id = list(projekt.values())[0]
+            else:
+                print(f"❌ Kann ID nicht finden für: {projekt}")
+                continue
+
+            # Sicherstellen dass es eine Zahl ist
+            try:
+                projekt_id = int(projekt_id)
+                print(f"✅ Verwende projekt_id: {projekt_id}")
+            except (ValueError, TypeError):
+                print(f"❌ Ungültige projekt_id: {projekt_id}, überspringe Projekt")
+                continue
             
-            # ✅ SITZUNGEN mit korrekten Spalten-Namen: start_zeit und end_zeit
+            # ✅ SITZUNGEN holen
             if von_datum_str and bis_datum_str:
                 sitzungen_query = '''
                     SELECT teilbereich, 
@@ -787,15 +805,15 @@ def gesamt_bericht():
                 
                 if teilbereich in teilbereiche:
                     teilbereiche[teilbereich]['gesamt_minuten'] = minuten
-                elif teilbereich == 'aufmaß':  # Alternative Schreibweise
+                elif teilbereich == 'aufmaß':
                     teilbereiche['aufmass']['gesamt_minuten'] = minuten
             
             projekt_final = {
-                'id': projekt['id'],
-                'name': projekt['name'],
-                'kunde': projekt['kunde'],
-                'status': projekt['status'],
-                'erstellt_am': projekt['erstellt_am'],  # ✅ Zurück zu erstellt_am
+                'id': projekt_id,
+                'name': projekt.get('name', 'Unbekannt'),
+                'kunde': projekt.get('kunde', 'Unbekannt'),
+                'status': projekt.get('status', 'unbekannt'),
+                'erstellt_am': projekt.get('erstellt_am', ''),
                 'teilbereiche': teilbereiche
             }
             
