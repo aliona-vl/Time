@@ -710,7 +710,7 @@ def export_vorschau():
         })
 @app.route('/gesamt-bericht')
 def gesamt_bericht():
-    """Gesamt-Bericht mit exakt dem gewünschten Template"""
+    """Gesamt-Bericht mit PostgreSQL Unterstützung"""
     try:
         von_datum_str = request.args.get('von', '')
         bis_datum_str = request.args.get('bis', '')
@@ -731,8 +731,9 @@ def gesamt_bericht():
             bis_datum = None
         
         conn = get_db_connection()
+        cur = conn.cursor()  # ✅ CURSOR ERSTELLEN!
         
-        # BEENDETE PROJEKTE MIT TEILBEREICHEN HOLEN
+        # BEENDETE PROJEKTE HOLEN
         if von_datum and bis_datum:
             projekte_query = '''
                 SELECT DISTINCT p.id, p.name, p.kunde, p.status, p.erstellt_am
@@ -748,12 +749,17 @@ def gesamt_bericht():
                 ORDER BY p.erstellt_am DESC
             '''
         
-        projekte_raw = conn.execute(projekte_query).fetchall()
+        cur.execute(projekte_query)  # ✅ CURSOR VERWENDEN
+        projekte_raw = cur.fetchall()
+        
+        # SPALTEN-NAMEN HOLEN
+        columns = [desc[0] for desc in cur.description]
+        projekte_dict = [dict(zip(columns, row)) for row in projekte_raw]
         
         # PROJEKTE MIT TEILBEREICHEN AUFBAUEN
         projekte = []
         
-        for projekt in projekte_raw:
+        for projekt in projekte_dict:
             projekt_id = projekt['id']
             
             # Aktivitäten für dieses Projekt holen
@@ -761,18 +767,22 @@ def gesamt_bericht():
                 aktivitaeten_query = '''
                     SELECT teilbereich, SUM(CAST(dauer AS FLOAT)) as stunden
                     FROM aktivitaeten 
-                    WHERE projekt_id = ? AND datum BETWEEN ? AND ?
+                    WHERE projekt_id = %s AND datum BETWEEN %s AND %s
                     GROUP BY teilbereich
                 '''
-                aktivitaeten = conn.execute(aktivitaeten_query, (projekt_id, von_datum_str, bis_datum_str)).fetchall()
+                cur.execute(aktivitaeten_query, (projekt_id, von_datum_str, bis_datum_str))
             else:
                 aktivitaeten_query = '''
                     SELECT teilbereich, SUM(CAST(dauer AS FLOAT)) as stunden
                     FROM aktivitaeten 
-                    WHERE projekt_id = ?
+                    WHERE projekt_id = %s
                     GROUP BY teilbereich
                 '''
-                aktivitaeten = conn.execute(aktivitaeten_query, (projekt_id,)).fetchall()
+                cur.execute(aktivitaeten_query, (projekt_id,))
+            
+            aktivitaeten_raw = cur.fetchall()
+            aktivitaeten_columns = [desc[0] for desc in cur.description]
+            aktivitaeten = [dict(zip(aktivitaeten_columns, row)) for row in aktivitaeten_raw]
             
             # Teilbereiche initialisieren
             teilbereiche = {
@@ -790,7 +800,7 @@ def gesamt_bericht():
                 if teilbereich in teilbereiche:
                     teilbereiche[teilbereich]['gesamt_minuten'] = minuten
             
-            projekt_dict = {
+            projekt_final = {
                 'id': projekt['id'],
                 'name': projekt['name'],
                 'kunde': projekt['kunde'],
@@ -799,8 +809,9 @@ def gesamt_bericht():
                 'teilbereiche': teilbereiche
             }
             
-            projekte.append(projekt_dict)
+            projekte.append(projekt_final)
         
+        cur.close()  # ✅ CURSOR SCHLIESSEN
         conn.close()
         
         # DATUM FORMATIERUNG
@@ -822,7 +833,9 @@ def gesamt_bericht():
                           projekt['teilbereiche']['aufmass']['gesamt_minuten'])
             alle_zeit_minuten += projekt_zeit
         
-        # HTML TEMPLATE (1:1 wie Ihr Template)
+        print(f"✅ {len(projekte)} Projekte gefunden, {alle_zeit_minuten} Minuten gesamt")
+        
+        # HTML TEMPLATE (Ihr exaktes Design)
         html_content = f'''<!DOCTYPE html>
 <html lang="de">
 <head>
@@ -1013,114 +1026,33 @@ def gesamt_bericht():
         }}
 
         @media (min-width: 768px) {{
-            body {{
-                padding: 20px;
-                font-size: 14px;
-            }}
-
-            .report-container {{
-                max-width: 900px;
-            }}
-
-            .report-title {{
-                font-size: 1.8em;
-            }}
-
-            .report-subtitle {{
-                font-size: 1em;
-            }}
-
-            .projekt-header {{
-                flex-direction: row;
-                justify-content: space-between;
-                align-items: center;
-            }}
-
-            .projekt-gesamt {{
-                margin-top: 0;
-            }}
-
-            .teilbereiche-grid {{
-                grid-template-columns: repeat(3, 1fr);
-                gap: 10px;
-            }}
-
-            .btn {{
-                padding: 15px 30px;
-                font-size: 16px;
-            }}
+            body {{ padding: 20px; font-size: 14px; }}
+            .report-container {{ max-width: 900px; }}
+            .report-title {{ font-size: 1.8em; }}
+            .report-subtitle {{ font-size: 1em; }}
+            .projekt-header {{ flex-direction: row; justify-content: space-between; align-items: center; }}
+            .projekt-gesamt {{ margin-top: 0; }}
+            .teilbereiche-grid {{ grid-template-columns: repeat(3, 1fr); gap: 10px; }}
+            .btn {{ padding: 15px 30px; font-size: 16px; }}
         }}
 
         @media (max-width: 768px) {{
-            .action-buttons {{
-                flex-direction: column;
-                align-items: center;
-                gap: 10px;
-            }}
-
-            .btn {{
-                width: 100%;
-                max-width: 250px;
-            }}
+            .action-buttons {{ flex-direction: column; align-items: center; gap: 10px; }}
+            .btn {{ width: 100%; max-width: 250px; }}
         }}
 
         @media print {{
-            .action-buttons {{
-                display: none !important;
-            }}
-
-            body {{
-                background: white !important;
-                padding: 5px !important;
-                font-size: 9px !important;
-            }}
-            
-            @page {{
-                margin: 0.5cm;
-                size: A4;
-            }}
-
-            .report-container {{
-                transform: scale(0.95);
-                transform-origin: top left;
-                width: 105%;
-            }}
-
-            .projekt-item {{
-                page-break-inside: avoid;
-                break-inside: avoid;
-                margin-bottom: 8px !important;
-            }}
-
-            .report-section {{
-                page-break-inside: avoid;
-                break-inside: avoid;
-                margin-bottom: 12px !important;
-            }}
-
-            .report-title {{
-                font-size: 1.4em !important;
-                color: black !important;
-            }}
-
-            .report-subtitle {{
-                font-size: 0.8em !important;
-            }}
-
-            .section-title {{
-                font-size: 0.9em !important;
-                color: black !important;
-            }}
-
-            .projekt-name {{
-                font-size: 0.9em !important;
-                color: black !important;
-            }}
-
-            .teilbereiche-grid {{
-                grid-template-columns: repeat(3, 1fr) !important;
-                gap: 6px !important;
-            }}
+            .action-buttons {{ display: none !important; }}
+            body {{ background: white !important; padding: 5px !important; font-size: 9px !important; }}
+            @page {{ margin: 0.5cm; size: A4; }}
+            .report-container {{ transform: scale(0.95); transform-origin: top left; width: 105%; }}
+            .projekt-item {{ page-break-inside: avoid; break-inside: avoid; margin-bottom: 8px !important; }}
+            .report-section {{ page-break-inside: avoid; break-inside: avoid; margin-bottom: 12px !important; }}
+            .report-title {{ font-size: 1.4em !important; color: black !important; }}
+            .report-subtitle {{ font-size: 0.8em !important; }}
+            .section-title {{ font-size: 0.9em !important; color: black !important; }}
+            .projekt-name {{ font-size: 0.9em !important; color: black !important; }}
+            .teilbereiche-grid {{ grid-template-columns: repeat(3, 1fr) !important; gap: 6px !important; }}
         }}
     </style>
 </head>
@@ -1132,8 +1064,7 @@ def gesamt_bericht():
         </div>
 
         <div class="summary-bar" style="background: var(--primary-blue); color: white; padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 20px; font-weight: bold; font-size: 14px;">
-            📊 {len(projekte)} Projekt(e) | 
-            ⏱️ '''
+            📊 {len(projekte)} Projekt(e) | ⏱️ '''
         
         # ZEIT FORMATIERUNG
         if alle_zeit_minuten < 60:
@@ -1143,11 +1074,11 @@ def gesamt_bericht():
             minuten = alle_zeit_minuten % 60
             html_content += f"{stunden}h {minuten}min"
         
-        html_content += '''
+        html_content += f'''
         </div>
 
         <div class="report-section">
-            <div class="section-title">🏗️ Beendete Projekte (' + str(len(projekte)) + ')</div>
+            <div class="section-title">🏗️ Beendete Projekte ({len(projekte)})</div>
             '''
         
         if projekte:
@@ -1268,7 +1199,7 @@ def gesamt_bericht():
         print(f"❌ Fehler in gesamt_bericht: {e}")
         import traceback
         traceback.print_exc()
-        return f"<h1>Fehler: {str(e)}</h1>", 500
+        return f"<h1>Fehler: {str(e)}</h1><pre>{traceback.format_exc()}</pre>", 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
