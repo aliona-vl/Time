@@ -479,35 +479,60 @@ def projekt_beenden(projekt_id):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Erst prüfen ob Projekt existiert
+        # Erst prüfen ob Projekt existiert und Namen holen
         cursor.execute('SELECT id, name, status FROM projekte WHERE id = %s', (projekt_id,))
-        projekt = cursor.fetchone()
+        projekt_row = cursor.fetchone()
         
-        if not projekt:
+        if not projekt_row:
             conn.close()
             return jsonify({
                 'status': 'error', 
                 'message': f'Projekt {projekt_id} nicht gefunden'
             }), 404
         
+        # ✅ SICHERER ZUGRIFF AUF PROJEKT-DATEN
+        projekt = dict(projekt_row)
+        projekt_name = projekt['name']
+        
+        print(f"📋 Gefundenes Projekt: {projekt}")
+        
+        # Alle aktiven Sitzungen für dieses Projekt beenden
+        cursor.execute('SELECT COUNT(*) as count FROM aktive_sitzungen WHERE projekt_id = %s', (projekt_id,))
+        aktive_count = cursor.fetchone()['count']
+        
+        if aktive_count > 0:
+            print(f"⚠️ Beende {aktive_count} aktive Sitzungen")
+            cursor.execute('DELETE FROM aktive_sitzungen WHERE projekt_id = %s', (projekt_id,))
+        
         # Status auf 'beendet' setzen
         cursor.execute(
-            'UPDATE projekte SET status = %s WHERE id = %s', 
-            ('beendet', projekt_id)
+            'UPDATE projekte SET status = %s, beendet_am = %s WHERE id = %s', 
+            ('beendet', datetime.now().isoformat(), projekt_id)
         )
+        
+        affected_rows = cursor.rowcount
+        print(f"📝 Betroffene Zeilen: {affected_rows}")
         
         conn.commit()
         conn.close()
         
+        print(f"✅ Projekt {projekt_id} erfolgreich beendet")
+        
         return jsonify({
             'status': 'success',
-            'message': f'Projekt "{projekt[1]}" wurde beendet'
+            'message': f'Projekt "{projekt_name}" wurde beendet'
         })
         
     except Exception as e:
-        print(f"❌ FEHLER: {str(e)}")
+        print(f"❌ FEHLER beim Beenden von Projekt {projekt_id}: {str(e)}")
         import traceback
         traceback.print_exc()
+        
+        if 'conn' in locals():
+            try:
+                conn.close()
+            except:
+                pass
         
         return jsonify({
             'status': 'error',
