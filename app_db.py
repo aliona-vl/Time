@@ -469,104 +469,61 @@ def aktivität_beenden(projekt_id):
             'message': f'Server-Fehler: {str(e)}',
             'error_type': type(e).__name__
         })
-    @app.route('/projekt/<int:projekt_id>/beenden', methods=['POST'])
-@login_required
+    
+@app.route('/projekt/<int:projekt_id>/beenden', methods=['POST'])
 def projekt_beenden(projekt_id):
-    """Projekt manuell beenden"""
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # Alle aktiven Sitzungen für dieses Projekt beenden
-        cursor.execute('''
-            SELECT mitarbeiter, teilbereich, start_zeit 
-            FROM aktive_sitzungen 
-            WHERE projekt_id = %s
-        ''', (projekt_id,))
-        
-        aktive_sitzungen = cursor.fetchall()
-        
-        # Jede aktive Sitzung beenden
-        for sitzung in aktive_sitzungen:
-            end_zeit = datetime.now(pytz.UTC)
-            start_zeit = sitzung['start_zeit']
-            
-            if isinstance(start_zeit, str):
-                start_zeit = datetime.fromisoformat(start_zeit.replace('Z', '+00:00'))
-            elif start_zeit.tzinfo is None:
-                start_zeit = pytz.UTC.localize(start_zeit)
-            
-            time_diff = end_zeit - start_zeit
-            dauer_minuten = max(1, int(time_diff.total_seconds() / 60))
-            
-            # Sitzung speichern
-            cursor.execute('''
-                INSERT INTO sitzungen (projekt_id, mitarbeiter, teilbereich, start_zeit, end_zeit, dauer_minuten)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            ''', (projekt_id, sitzung['mitarbeiter'], sitzung['teilbereich'], 
-                  start_zeit, end_zeit, dauer_minuten))
-        
-        # Aktive Sitzungen löschen
-        cursor.execute('DELETE FROM aktive_sitzungen WHERE projekt_id = %s', (projekt_id,))
-        
-        # Projekt auf beendet setzen
-        cursor.execute('''
-            UPDATE projekte 
-            SET status = 'beendet', beendet_am = %s 
-            WHERE id = %s
-        ''', (datetime.now(), projekt_id))
-        
-        conn.commit()
-        conn.close()
-        
-        return jsonify({'status': 'success', 'message': 'Projekt beendet'})
-        
-    except Exception as e:
-        print(f"Fehler beim Beenden: {e}")
-        return jsonify({'status': 'error', 'message': str(e)})
+    if 'benutzer_email' not in session:
+        return jsonify({'status': 'error', 'message': 'Nicht angemeldet'})
 
-@app.route('/projekte/löschen', methods=['POST'])
-@login_required
-def projekte_löschen():
-    projekt_ids = request.json.get('projekt_ids', [])
-    
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    for projekt_id in projekt_ids:
-        cursor.execute('DELETE FROM projekte WHERE id = %s', (projekt_id,))
-    
-    conn.commit()
-    conn.close()
-    
+    alle_projekte = load_data(PROJEKTE_FILE)
+    projekt = next((p for p in alle_projekte if p['id'] == projekt_id), None)
+
+    if not projekt:
+        return jsonify({'status': 'error', 'message': 'Projekt nicht gefunden'})
+
+    # Alle aktiven Sitzungen beenden
+    for mitarbeiter in list(projekt.get('aktive_sitzungen', {}).keys()):
+        aktive_sitzung = projekt['aktive_sitzungen'][mitarbeiter]
+        start_zeit = datetime.fromisoformat(aktive_sitzung['start'])
+        end_zeit = datetime.now()
+        dauer_minuten = int((end_zeit - start_zeit).total_seconds() / 60)
+
+        teilbereich = aktive_sitzung['teilbereich']
+
+        sitzung = {
+            'mitarbeiter': mitarbeiter,
+            'start': aktive_sitzung['start'],
+            'end': end_zeit.isoformat(),
+            'dauer_minuten': dauer_minuten
+        }
+
+        projekt['teilbereiche'][teilbereich]['sitzungen'].append(sitzung)
+        projekt['teilbereiche'][teilbereich]['gesamt_minuten'] += dauer_minuten
+
+    projekt['status'] = 'beendet'
+    projekt['beendet_am'] = datetime.now().isoformat()
+    projekt['aktive_sitzungen'] = {}
+
+    save_data(PROJEKTE_FILE, alle_projekte)
     return jsonify({'status': 'success'})
 
+
 @app.route('/projekt/<int:projekt_id>/bericht')
-@login_required
 def projekt_bericht(projekt_id):
-    """Einzelprojekt-Bericht"""
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute('SELECT * FROM projekte WHERE id = %s', (projekt_id,))
-        projekt_row = cursor.fetchone()
-        
-        if not projekt_row:
-            conn.close()
-            return "Projekt nicht gefunden", 404
-        
-        projekt = dict(projekt_row)
-        
-        if projekt['status'] != 'beendet':
-            conn.close()
-            return "Projekt ist noch nicht beendet", 400
-        
-        conn.close()
-        return f"<h1>Bericht für Projekt: {projekt['name']}</h1><p><a href='/dashboard'>← Zurück</a></p>"
-        
-    except Exception as e:
-        return f"<h1>Fehler: {str(e)}</h1>"
+    if 'benutzer_email' not in session:
+        return redirect(url_for('index'))
+
+    alle_projekte = load_data(PROJEKTE_FILE)
+    projekt = next((p for p in alle_projekte if p['id'] == projekt_id), None)
+
+    if not projekt:
+        return "Projekt nicht gefunden", 404
+
+    if projekt['status'] != 'beendet':
+        return "Projekt ist noch nicht beendet", 400
+
+    bericht = erstelle_projekt_bericht(projekt)
+    return render_template('bericht.html', bericht=bericht, projekt=projekt)
 @app.route('/mitarbeiter/hinzufügen', methods=['POST'])
 @login_required
 def mitarbeiter_hinzufügen():

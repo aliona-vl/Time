@@ -902,9 +902,12 @@
                             </div>
                         </div>
                         <input type="checkbox" 
-                               class="projekt-checkbox" 
-                               id="projekt_{{ projekt.id }}"
-                               onclick="event.stopPropagation(); toggleProjektAuswahl({{ projekt.id }}, '{{ projekt.status }}')">
+       class="projekt-checkbox" 
+       id="projekt_{{ projekt.id }}"
+       name="projekt_ids"
+       value="{{ projekt.id }}"
+       data-projekt-id="{{ projekt.id }}"
+       data-status="{{ projekt.status }}">
                     </div>
 
                     <div class="projekt-status status-{{ projekt.status }}">
@@ -1338,7 +1341,20 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
-
+// Event-Listener für alle Checkboxen
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.projekt-checkbox').forEach(function(checkbox) {
+        checkbox.addEventListener('change', function(event) {
+            event.stopPropagation();
+            
+            const projektId = this.dataset.projektId;
+            const status = this.dataset.status;
+            
+            // Ihre Logik hier
+            toggleProjektAuswahl(projektId, status);
+        });
+    });
+});
 console.log('✅ ALLE FUNKTIONEN DEFINIERT!');
 
 // ✅ TEST: Funktionen im Window verfügbar machen
