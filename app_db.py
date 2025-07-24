@@ -710,7 +710,7 @@ def export_vorschau():
         })
 @app.route('/gesamt-bericht')
 def gesamt_bericht():
-    """Gesamt-Bericht mit korrekten Railway PostgreSQL Spalten-Namen"""
+    """Gesamt-Bericht mit PostgreSQL Hinweis: erstellt_am (nicht erstellt_an)"""
     try:
         von_datum_str = request.args.get('von', '')
         bis_datum_str = request.args.get('bis', '')
@@ -720,12 +720,12 @@ def gesamt_bericht():
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # ✅ PROJEKTE mit korrekten Spalten-Namen holen
+        # ✅ PROJEKTE mit PostgreSQL-korrigierter Spalte: erstellt_am
         projekte_query = '''
-            SELECT DISTINCT p.id, p.name, p.kunde, p.status, p.erstellt_an
+            SELECT DISTINCT p.id, p.name, p.kunde, p.status, p.erstellt_am
             FROM projekte p
             WHERE p.status = 'beendet'
-            ORDER BY p.erstellt_an DESC
+            ORDER BY p.erstellt_am DESC
         '''
         
         cur.execute(projekte_query)
@@ -739,7 +739,7 @@ def gesamt_bericht():
         projekte = []
         
         for projekt in projekte_dict:
-            projekt_id = projekt['id']  # ✅ Sollte jetzt funktionieren
+            projekt_id = projekt['id']
             
             print(f"🔍 Verarbeite Projekt ID: {projekt_id} ({type(projekt_id)})")
             
@@ -795,7 +795,7 @@ def gesamt_bericht():
                 'name': projekt['name'],
                 'kunde': projekt['kunde'],
                 'status': projekt['status'],
-                'erstellt_an': projekt['erstellt_an'],  # ✅ Korrigiert!
+                'erstellt_am': projekt['erstellt_am'],  # ✅ Zurück zu erstellt_am
                 'teilbereiche': teilbereiche
             }
             
