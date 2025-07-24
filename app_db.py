@@ -710,7 +710,7 @@ def export_vorschau():
         })
 @app.route('/gesamt-bericht')
 def gesamt_bericht():
-    """Gesamt-Bericht mit korrekten Railway Tabellen-Namen"""
+    """Gesamt-Bericht mit korrekter Dauer-Berechnung aus startzeit/endzeit"""
     try:
         von_datum_str = request.args.get('von', '')
         bis_datum_str = request.args.get('bis', '')
@@ -720,7 +720,7 @@ def gesamt_bericht():
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # ✅ RICHTIGE TABELLEN: projekte + sitzungen
+        # ✅ PROJEKTE HOLEN
         projekte_query = '''
             SELECT DISTINCT p.id, p.name, p.kunde, p.status, p.erstellt_am
             FROM projekte p
@@ -739,18 +739,21 @@ def gesamt_bericht():
         for projekt in projekte_dict:
             projekt_id = projekt['id']
             
-            # ✅ SITZUNGEN statt aktivitaeten verwenden
+            # ✅ SITZUNGEN mit DAUER-BERECHNUNG holen
             if von_datum_str and bis_datum_str:
                 sitzungen_query = '''
-                    SELECT teilbereich, SUM(CAST(dauer AS FLOAT)) as stunden
+                    SELECT teilbereich, 
+                           SUM(EXTRACT(EPOCH FROM (endzeit - startzeit))/3600) as stunden_gesamt
                     FROM sitzungen 
-                    WHERE projekt_id = %s AND datum BETWEEN %s AND %s
+                    WHERE projekt_id = %s 
+                      AND DATE(startzeit) BETWEEN %s AND %s
                     GROUP BY teilbereich
                 '''
                 cur.execute(sitzungen_query, (projekt_id, von_datum_str, bis_datum_str))
             else:
                 sitzungen_query = '''
-                    SELECT teilbereich, SUM(CAST(dauer AS FLOAT)) as stunden
+                    SELECT teilbereich, 
+                           SUM(EXTRACT(EPOCH FROM (endzeit - startzeit))/3600) as stunden_gesamt
                     FROM sitzungen 
                     WHERE projekt_id = %s
                     GROUP BY teilbereich
@@ -770,12 +773,14 @@ def gesamt_bericht():
             
             # Sitzungen zu Teilbereichen zuordnen
             for sitzung in sitzungen:
-                teilbereich = sitzung['teilbereich'].lower()
-                stunden = float(sitzung['stunden'] or 0)
+                teilbereich = sitzung['teilbereich'].lower().strip()
+                stunden = float(sitzung['stunden_gesamt'] or 0)
                 minuten = int(stunden * 60)
                 
                 if teilbereich in teilbereiche:
                     teilbereiche[teilbereich]['gesamt_minuten'] = minuten
+                elif teilbereich == 'aufmaß':  # Alternative Schreibweise
+                    teilbereiche['aufmass']['gesamt_minuten'] = minuten
             
             projekt_final = {
                 'id': projekt['id'],
