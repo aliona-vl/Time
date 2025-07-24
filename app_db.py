@@ -710,7 +710,7 @@ def export_vorschau():
         })
 @app.route('/gesamt-bericht')
 def gesamt_bericht():
-    """Gesamt-Bericht mit korrekter Dauer-Berechnung aus startzeit/endzeit"""
+    """Gesamt-Bericht mit korrekten Spalten-Namen: start_zeit und end_zeit"""
     try:
         von_datum_str = request.args.get('von', '')
         bis_datum_str = request.args.get('bis', '')
@@ -739,21 +739,21 @@ def gesamt_bericht():
         for projekt in projekte_dict:
             projekt_id = projekt['id']
             
-            # ✅ SITZUNGEN mit DAUER-BERECHNUNG holen
+            # ✅ SITZUNGEN mit korrekten Spalten-Namen: start_zeit und end_zeit
             if von_datum_str and bis_datum_str:
                 sitzungen_query = '''
                     SELECT teilbereich, 
-                           SUM(EXTRACT(EPOCH FROM (endzeit - startzeit))/3600) as stunden_gesamt
+                           SUM(EXTRACT(EPOCH FROM (end_zeit - start_zeit))/3600) as stunden_gesamt
                     FROM sitzungen 
                     WHERE projekt_id = %s 
-                      AND DATE(startzeit) BETWEEN %s AND %s
+                      AND DATE(start_zeit) BETWEEN %s AND %s
                     GROUP BY teilbereich
                 '''
                 cur.execute(sitzungen_query, (projekt_id, von_datum_str, bis_datum_str))
             else:
                 sitzungen_query = '''
                     SELECT teilbereich, 
-                           SUM(EXTRACT(EPOCH FROM (endzeit - startzeit))/3600) as stunden_gesamt
+                           SUM(EXTRACT(EPOCH FROM (end_zeit - start_zeit))/3600) as stunden_gesamt
                     FROM sitzungen 
                     WHERE projekt_id = %s
                     GROUP BY teilbereich
