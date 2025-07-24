@@ -1189,104 +1189,120 @@
             }
         }
 
-        // ✅ VERBESSERTE EXPORT-VORSCHAU FUNKTION
-        function exportVorschau() {
-            const vonDatum = document.getElementById('exportVonDatum').value;
-            const bisDatum = document.getElementById('exportBisDatum').value;
+       function exportVorschau() {
+    console.log('Starting Export Preview...');
+    
+    // Werte aus den Input-Feldern holen
+    const vonDatumField = document.getElementById('vonDatum');
+    const bisDatumField = document.getElementById('bisDatum');
+    const formatRadio = document.querySelector('input[name="format"]:checked');
+    
+    if (!vonDatumField || !bisDatumField) {
+        alert('Datum-Felder nicht gefunden!');
+        return;
+    }
+    
+    const vonDatum = vonDatumField.value;
+    const bisDatum = bisDatumField.value;
+    const format = formatRadio ? formatRadio.value : 'pdf';
+    
+    // DEBUG: Werte in Konsole ausgeben
+    console.log('Export-Daten:', {
+        von: vonDatum,
+        bis: bisDatum,
+        format: format
+    });
+    
+    // Validierung
+    if (!vonDatum || !bisDatum) {
+        alert('Bitte wählen Sie Von- und Bis-Datum');
+        return;
+    }
+    
+    if (new Date(vonDatum) > new Date(bisDatum)) {
+        alert('Von-Datum darf nicht nach Bis-Datum liegen');
+        return;
+    }
+    
+    // Form-Daten sammeln
+    const formData = new FormData();
+    formData.append('von_datum', vonDatum);
+    formData.append('bis_datum', bisDatum);
+    formData.append('format', format);
+    
+    // DEBUG: FormData ausgeben
+    console.log('Sending FormData:');
+    for (let pair of formData.entries()) {
+        console.log(pair[0] + ': ' + pair[1]);
+    }
+    
+    // Loading-Anzeige
+    const vorschauBtn = event.target;
+    const originalText = vorschauBtn.innerHTML;
+    vorschauBtn.innerHTML = '⏳ Lade...';
+    vorschauBtn.disabled = true;
+    
+    // Request senden
+    fetch('/export/vorschau', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        console.log('Response Status:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('Server Response:', data);
+        
+        // Button zurücksetzen
+        vorschauBtn.innerHTML = originalText;
+        vorschauBtn.disabled = false;
+        
+        if (data.status === 'success') {
+            // Gesamt-Bericht Route öffnen
+            const url = `/gesamt-bericht?von=${vonDatum}&bis=${bisDatum}&format=${format}`;
+            console.log('Opening URL:', url);
             
-            if (!vonDatum || !bisDatum) {
-                alert('Bitte beide Datumsfelder ausfüllen');
-                return;
-            }
+            // Neuer Tab öffnen
+            window.open(url, '_blank');
             
-            fetch('/export/vorschau', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    von_datum: vonDatum,
-                    bis_datum: bisDatum
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    // ✅ NEUE PARAMETER HINZUGEFÜGT
-                    zeigeExportVorschau(
-                        data.projekte, 
-                        data.gesamt_zeit,
-                        data.gesamt_besprechung,
-                        data.gesamt_zeichnung,
-                        data.gesamt_aufmass
-                    );
-                } else {
-                    alert('Fehler: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Fehler beim Laden der Vorschau');
-            });
+            // Modal schließen
+            closeExportModal();
+            
+            // Success-Message
+            showMessage(`Export-Vorschau für ${data.anzahl_projekte} Projekt(e) geöffnet`, 'success');
+        } else {
+            alert('Fehler bei Vorschau: ' + data.message);
         }
+    })
+    .catch(error => {
+        console.error('Export-Fehler:', error);
+        
+        // Button zurücksetzen
+        vorschauBtn.innerHTML = originalText;
+        vorschauBtn.disabled = false;
+        
+        alert('Netzwerk-Fehler bei Export-Vorschau');
+    });
+}
 
-        // ✅ VERBESSERTE VORSCHAU-ANZEIGE FUNKTION
-        function zeigeExportVorschau(projekte, gesamtZeit, gesamtBesprechung, gesamtZeichnung, gesamtAufmass) {
-            const vorschauDiv = document.getElementById('exportProjekteListe');
-            
-            let html = '';
-            
-            projekte.forEach(projekt => {
-                html += `
-                    <div class="export-projekt-item">
-                        <div class="export-projekt-name">${projekt.name}</div>
-                        <div class="export-projekt-details">
-                            👤 ${projekt.kunde} | 
-                            📅 ${projekt.erstellt_datum} | 
-                            🏁 ${projekt.beendet_datum} | 
-                            ⏱️ ${projekt.gesamt_zeit}
-                            <br>
-                            📋 Besprechung: ${projekt.besprechung_zeit} | 
-                            ✏️ Zeichnung: ${projekt.zeichnung_zeit} | 
-                            📏 Aufmaß: ${projekt.aufmass_zeit}
-                        </div>
-                    </div>
-                `;
-            });
-            
-            // ✅ DETAILLIERTE GESAMT-ZUSAMMENFASSUNG
-            html += `
-                <div class="export-summary">
-                    📊 GESAMT: ${gesamtZeit} | 
-                    📋 Besprechung: ${gesamtBesprechung} | 
-                    ✏️ Zeichnung: ${gesamtZeichnung} | 
-                    📏 Aufmaß: ${gesamtAufmass}
-                </div>
-            `;
-            
-            vorschauDiv.innerHTML = html;
-            document.getElementById('exportPreview').style.display = 'block';
-            // Drucken-Button aktivieren falls vorhanden
-            const druckBtn = document.querySelector('button[onclick="vorschauDrucken()"]');
-            if (druckBtn) druckBtn.style.display = 'inline-block';
+// ✅ MODAL CLOSE BEI ESC
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        const exportModal = document.getElementById('exportModal');
+        if (exportModal && exportModal.style.display === 'block') {
+            closeExportModal();
         }
+    }
+});
 
-        function datenExportieren() {
-            const vonDatum = document.getElementById('exportVonDatum').value;
-            const bisDatum = document.getElementById('exportBisDatum').value;
-            const format = document.getElementById('exportFormat').value;
-            
-            const exportUrl = `/export/${format}?von=${vonDatum}&bis=${bisDatum}`;
-            
-            if (format === 'pdf') {
-                window.open(exportUrl, '_blank');
-            } else {
-                window.location.href = exportUrl;
-            }
-            
-            closeModal('exportModal');
-        }
-
+// ✅ MODAL CLOSE BEI BACKGROUND-CLICK
+document.addEventListener('click', function(event) {
+    const exportModal = document.getElementById('exportModal');
+    if (event.target === exportModal) {
+        closeExportModal();
+    }
+});
         function openModal(modalId) {
             const modal = document.getElementById(modalId);
             if (modal) {
