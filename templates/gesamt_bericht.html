@@ -39,7 +39,6 @@
             background: white;
         }
 
-        /* ✅ MOBILE HEADER */
         .report-header {
             text-align: center;
             margin-bottom: 20px;
@@ -60,7 +59,17 @@
             color: var(--text-light);
         }
 
-        /* ✅ MOBILE SECTIONS */
+        .summary-bar {
+            background: var(--primary-blue);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
         .report-section {
             margin-bottom: 20px;
             background: var(--background-light);
@@ -76,7 +85,6 @@
             margin-bottom: 12px;
         }
 
-        /* ✅ MOBILE PROJECT ITEMS */
         .projekt-item {
             background: white;
             border: 1px solid var(--border-color);
@@ -119,7 +127,21 @@
             margin-top: 4px;
         }
 
-        /* ✅ MOBILE TEILBEREICHE */
+        .mitarbeiter-section {
+            margin-top: 10px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 8px;
+        }
+
+        .mitarbeiter-header {
+            font-weight: bold;
+            color: var(--primary-dark);
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
         .teilbereiche-grid {
             display: grid;
             grid-template-columns: 1fr;
@@ -151,7 +173,6 @@
             font-size: 0.8em;
         }
 
-        /* ✅ BUTTON STYLES */
         .action-buttons {
             text-align: center;
             margin-top: 25px;
@@ -192,7 +213,7 @@
             background: var(--gray);
         }
 
-        /* ✅ DESKTOP RESPONSIVE */
+        /* RESPONSIVE */
         @media (min-width: 768px) {
             body {
                 padding: 20px;
@@ -203,36 +224,18 @@
                 max-width: 900px;
             }
 
-            .report-title {
-                font-size: 1.8em;
-            }
-
-            .report-subtitle {
-                font-size: 1em;
-            }
-
             .projekt-header {
                 flex-direction: row;
                 justify-content: space-between;
                 align-items: center;
             }
 
-            .projekt-gesamt {
-                margin-top: 0;
-            }
-
             .teilbereiche-grid {
                 grid-template-columns: repeat(3, 1fr);
                 gap: 10px;
             }
-
-            .btn {
-                padding: 15px 30px;
-                font-size: 16px;
-            }
         }
 
-        /* ✅ MOBILE RESPONSIVE BUTTONS */
         @media (max-width: 768px) {
             .action-buttons {
                 flex-direction: column;
@@ -246,7 +249,7 @@
             }
         }
 
-        /* ✅ PRINT OPTIMIZATION */
+        /* PRINT */
         @media print {
             .action-buttons {
                 display: none !important;
@@ -257,88 +260,32 @@
                 padding: 5px !important;
                 font-size: 9px !important;
             }
-            
-            @page {
-                margin: 0.5cm;
-                size: A4;
-            }
-
-            .report-container {
-                transform: scale(0.95);
-                transform-origin: top left;
-                width: 105%;
-            }
-
-            .projekt-item {
-                page-break-inside: avoid;
-                break-inside: avoid;
-                margin-bottom: 8px !important;
-            }
-
-            .report-section {
-                page-break-inside: avoid;
-                break-inside: avoid;
-                margin-bottom: 12px !important;
-            }
-
-            .report-title {
-                font-size: 1.4em !important;
-                color: black !important;
-            }
-
-            .report-subtitle {
-                font-size: 0.8em !important;
-            }
-
-            .section-title {
-                font-size: 0.9em !important;
-                color: black !important;
-            }
-
-            .projekt-name {
-                font-size: 0.9em !important;
-                color: black !important;
-            }
-
-            .teilbereiche-grid {
-                grid-template-columns: repeat(3, 1fr) !important;
-                gap: 6px !important;
-            }
         }
     </style>
 </head>
 <body>
     <div class="report-container">
-        <!-- ✅ MOBILE HEADER -->
+        <!-- HEADER -->
         <div class="report-header">
             <div class="report-title">📊 Gesamt-Bericht RAUSCH</div>
             <div class="report-subtitle">Zeitraum: {{ von_datum }} bis {{ bis_datum }}</div>
         </div>
 
-        <!-- ✅ SUMMARY LEISTE WIE IN VORSCHAU -->
-        <div class="summary-bar" style="background: var(--primary-blue); color: white; padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 20px; font-weight: bold; font-size: 14px;">
+        <!-- SUMMARY -->
+        <div class="summary-bar">
             📊 {{ projekte|length }} Projekt(e) | 
             ⏱️ 
-            {% set alle_zeit = 0 %}
-            {% for projekt in projekte %}
-                {% set projekt_zeit = projekt.teilbereiche.besprechung.gesamt_minuten + projekt.teilbereiche.zeichnung.gesamt_minuten + projekt.teilbereiche.aufmass.gesamt_minuten %}
-                {% set alle_zeit = alle_zeit + projekt_zeit %}
-            {% endfor %}
-            
-            {% if alle_zeit < 60 %}
-                {{ alle_zeit }}min
+            {% set total_minuten = gesamt_minuten %}
+            {% if total_minuten < 60 %}
+                {{ total_minuten }}min
             {% else %}
-                {{ alle_zeit // 60 }}h {{ alle_zeit % 60 }}min
+                {{ total_minuten // 60 }}h {{ total_minuten % 60 }}min
             {% endif %}
         </div>
 
-        <!-- ✅ MOBILE PROJECT LIST -->
+        <!-- PROJEKTE -->
         <div class="report-section">
-            <!-- ... rest der Projekte ... -->
-
-        <!-- ✅ MOBILE PROJECT LIST -->
-        <div class="report-section">
-            <div class="section-title">🏗️ Beendete Projekte ({{ projekte|length }})</div>
+            <div class="section-title">🏗️ Projekte im Zeitraum ({{ projekte|length }})</div>
             
             {% if projekte %}
                 {% for projekt in projekte %}
@@ -349,7 +296,7 @@
                             <div class="projekt-kunde">👤 {{ projekt.kunde }}</div>
                         </div>
                         <div class="projekt-gesamt">
-                            {% set gesamt = projekt.teilbereiche.besprechung.gesamt_minuten + projekt.teilbereiche.zeichnung.gesamt_minuten + projekt.teilbereiche.aufmass.gesamt_minuten %}
+                            {% set gesamt = projekt.gesamt_minuten %}
                             {% if gesamt < 60 %}
                                 {{ gesamt }}min
                             {% else %}
@@ -358,66 +305,76 @@
                         </div>
                     </div>
                     
-                    <!-- ✅ MOBILE TEILBEREICHE -->
-                    <div class="teilbereiche-grid">
-                        <div class="teilbereich-item">
-                            <div class="teilbereich-name">💬 Besprechung</div>
-                            <div class="teilbereich-zeit">
-                                {% if projekt.teilbereiche.besprechung.gesamt_minuten < 60 %}
-                                    {{ projekt.teilbereiche.besprechung.gesamt_minuten }}min
+                    <!-- MITARBEITER -->
+                    {% for mitarbeiter, stats in projekt.mitarbeiter_stats.items() %}
+                    <div class="mitarbeiter-section">
+                        <div class="mitarbeiter-header">
+                            <span>👤 {{ mitarbeiter }}</span>
+                            <span style="color: var(--primary-blue); font-size: 0.8em;">
+                                {% if stats.gesamt < 60 %}
+                                    {{ stats.gesamt }}min
                                 {% else %}
-                                    {{ projekt.teilbereiche.besprechung.gesamt_minuten // 60 }}h {{ projekt.teilbereiche.besprechung.gesamt_minuten % 60 }}min
+                                    {{ stats.gesamt // 60 }}h {{ stats.gesamt % 60 }}min
                                 {% endif %}
-                            </div>
+                            </span>
                         </div>
-                        <div class="teilbereich-item">
-                            <div class="teilbereich-name">📐 Zeichnung</div>
-                            <div class="teilbereich-zeit">
-                                {% if projekt.teilbereiche.zeichnung.gesamt_minuten < 60 %}
-                                    {{ projekt.teilbereiche.zeichnung.gesamt_minuten }}min
-                                {% else %}
-                                    {{ projekt.teilbereiche.zeichnung.gesamt_minuten // 60 }}h {{ projekt.teilbereiche.zeichnung.gesamt_minuten % 60 }}min
-                                {% endif %}
+                        
+                        <div class="teilbereiche-grid">
+                            <div class="teilbereich-item">
+                                <div class="teilbereich-name">💬 Besprechung</div>
+                                <div class="teilbereich-zeit">
+                                    {% if stats.besprechung < 60 %}
+                                        {{ stats.besprechung }}min
+                                    {% else %}
+                                        {{ stats.besprechung // 60 }}h {{ stats.besprechung % 60 }}min
+                                    {% endif %}
+                                </div>
                             </div>
-                        </div>
-                        <div class="teilbereich-item">
-                            <div class="teilbereich-name">📏 Aufmaß</div>
-                            <div class="teilbereich-zeit">
-                                {% if projekt.teilbereiche.aufmass.gesamt_minuten < 60 %}
-                                    {{ projekt.teilbereiche.aufmass.gesamt_minuten }}min
-                                {% else %}
-                                    {{ projekt.teilbereiche.aufmass.gesamt_minuten // 60 }}h {{ projekt.teilbereiche.aufmass.gesamt_minuten % 60 }}min
-                                {% endif %}
+                            <div class="teilbereich-item">
+                                <div class="teilbereich-name">📐 Zeichnung</div>
+                                <div class="teilbereich-zeit">
+                                    {% if stats.zeichnung < 60 %}
+                                        {{ stats.zeichnung }}min
+                                    {% else %}
+                                        {{ stats.zeichnung // 60 }}h {{ stats.zeichnung % 60 }}min
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="teilbereich-item">
+                                <div class="teilbereich-name">📏 Aufmaß</div>
+                                <div class="teilbereich-zeit">
+                                    {% if stats.aufmass < 60 %}
+                                        {{ stats.aufmass }}min
+                                    {% else %}
+                                        {{ stats.aufmass // 60 }}h {{ stats.aufmass % 60 }}min
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
                     </div>
+                    {% endfor %}
                 </div>
                 {% endfor %}
             {% else %}
                 <div style="text-align: center; padding: 20px; color: var(--text-light); font-style: italic;">
-                    📭 Keine beendeten Projekte im gewählten Zeitraum gefunden.
+                    📭 Keine Projekte im gewählten Zeitraum gefunden.
                 </div>
             {% endif %}
         </div>
 
-        <!-- ✅ PROJEKT-LISTE + BUTTONS (KEIN AUTO-PRINT) -->
+        <!-- BUTTONS -->
         <div class="action-buttons">
-            
             <button onclick="window.print()" class="btn btn-print">
                 🖨️ Drucken
             </button>
-            
             <button onclick="goBack()" class="btn btn-back">
                 ← Zurück
             </button>
-            
         </div>
     </div>
 
     <script>
-        // ✅ ZURÜCK FUNKTION
         function goBack() {
-            // Versuche verschiedene Wege zurück zu gehen
             if (window.history.length > 1) {
                 window.history.back();
             } else {
@@ -425,25 +382,11 @@
             }
         }
 
-        // ✅ ESC-TASTE FÜR ZURÜCK
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 goBack();
             }
         });
-
-        // ✅ KEIN AUTO-PRINT - NUR MANUELL ÜBER BUTTON
-        // Du siehst alles, druckst nur wenn du willst
-
-        // ✅ MOBILE-FRIENDLY OPTIMIERUNGEN
-        if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches) {
-            document.addEventListener('DOMContentLoaded', function() {
-                const meta = document.createElement('meta');
-                meta.name = 'viewport';
-                meta.content = 'width=device-width, initial-scale=0.9';
-                document.getElementsByTagName('head')[0].appendChild(meta);
-            });
-        }
     </script>
 </body>
 </html>
