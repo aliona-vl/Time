@@ -820,6 +820,154 @@ def export_vorschau():
             'status': 'error', 
             'message': f'Server-Fehler: {str(e)}'
         })
+@app.route('/projekt/<int:projekt_id>/bericht')
+@login_required
+def projekt_bericht(projekt_id):
+    try:
+        print(f"📊 Bericht für Projekt {projekt_id}")
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # ✅ PROJEKT-DETAILS HOLEN
+        cursor.execute('SELECT id, name, kunde, status, erstellt_am, beendet_am FROM projekte WHERE id = %s', (projekt_id,))
+        projekt_row = cursor.fetchone()
+        
+        if not projekt_row:
+            conn.close()
+            return "Projekt nicht gefunden", 404
+        
+        projekt = dict(projekt_row)
+        print(f"📋 Projekt gefunden: {projekt['name']}")
+        
+        # ✅ ALLE SITZUNGEN FÜR DIESES PROJEKT
+        cursor.execute('''
+            SELECT mitarbeiter, teilbereich, start_zeit, end_zeit, dauer_minuten
+            FROM sitzungen 
+            WHERE projekt_id = %s
+            ORDER BY start_zeit ASC
+        ''', (projekt_id,))
+        
+        sitzungen = cursor.fetchall()
+        print(f"📊 {len(sitzungen)} Sitzungen gefunden")
+        
+        # ✅ DATEN AUFBEREITEN
+        mitarbeiter_stats = {}
+        teilbereiche_gesamt = {
+            'besprechung': {'gesamt_minuten': 0, 'anzahl_sitzungen': 0},
+            'zeichnung': {'gesamt_minuten': 0, 'anzahl_sitzungen': 0},
+            'aufmass': {'gesamt_minuten': 0, 'anzahl_sitzungen': 0}
+        }
+        
+        gesamt_minuten = 0
+        start_datum = None
+        end_datum = None
+        
+        for sitzung in sitzungen:
+            mitarbeiter = sitzung['mitarbeiter']
+            teilbereich = sitzung['teilbereich'].lower().strip()
+            minuten = sitzung['dauer_minuten'] or 0
+            
+            # Datum tracking
+            if sitzung['start_zeit']:
+                if start_datum is None or sitzung['start_zeit'] < start_datum:
+                    start_datum = sitzung['start_zeit']
+                if end_datum is None or sitzung['start_zeit'] > end_datum:
+                    end_datum = sitzung['start_zeit']
+            
+            # Mitarbeiter initialisieren
+            if mitarbeiter not in mitarbeiter_stats:
+                mitarbeiter_stats[mitarbeiter] = {
+                    'besprechung': 0,
+                    'zeichnung': 0,
+                    'aufmass': 0,
+                    'gesamt': 0,
+                    'sitzungen': 0
+                }
+            
+            # Teilbereich zuordnen
+            if teilbereich in ['besprechung', 'zeichnung', 'aufmass']:
+                mitarbeiter_stats[mitarbeiter][teilbereich] += minuten
+                mitarbeiter_stats[mitarbeiter]['gesamt'] += minuten
+                mitarbeiter_stats[mitarbeiter]['sitzungen'] += 1
+                
+                teilbereiche_gesamt[teilbereich]['gesamt_minuten'] += minuten
+                teilbereiche_gesamt[teilbereich]['anzahl_sitzungen'] += 1
+                
+            elif teilbereich == 'aufmaß':
+                mitarbeiter_stats[mitarbeiter]['aufmass'] += minuten
+                mitarbeiter_stats[mitarbeiter]['gesamt'] += minuten
+                mitarbeiter_stats[mitarbeiter]['sitzungen'] += 1
+                
+                teilbereiche_gesamt['aufmass']['gesamt_minuten'] += minuten
+                teilbereiche_gesamt['aufmass']['anzahl_sitzungen'] += 1
+            
+            gesamt_minuten += minuten
+        
+        # ✅ ZEIT FORMATIERUNG
+        def format_minuten(minuten):
+            if minuten < 60:
+                return f"{minuten}min"
+            stunden = minuten // 60
+            rest_min = minuten % 60
+            if rest_min == 0:
+                return f"{stunden}h"
+            return f"{stunden}h {rest_min}min"
+        
+        # ✅ KALENDERTAGE BERECHNEN
+        kalendertage = 0
+        if start_datum and end_datum:
+            try:
+                if isinstance(start_datum, str):
+                    start_dt = datetime.fromisoformat(start_datum.replace('Z', '+00:00'))
+                else:
+                    start_dt = start_datum
+                
+                if isinstance(end_datum, str):
+                    end_dt = datetime.fromisoformat(end_datum.replace('Z', '+00:00'))
+                else:
+                    end_dt = end_datum
+                
+                kalendertage = (end_dt.date() - start_dt.date()).days + 1
+            except:
+                kalendertage = 1
+        
+        # ✅ MITARBEITER DATEN FORMATIEREN
+        mitarbeiter_formatted = {}
+        for name, stats in mitarbeiter_stats.items():
+            mitarbeiter_formatted[name] = {
+                'gesamt_zeit': format_minuten(stats['gesamt']),
+                'teilbereiche': {
+                    'besprechung': format_minuten(stats['besprechung']),
+                    'zeichnung': format_minuten(stats['zeichnung']),
+                    'aufmass': format_minuten(stats['aufmass'])
+                }
+            }
+        
+        # ✅ BERICHT-DATEN STRUKTUR
+        bericht_data = {
+            'projekt_name': projekt['name'],
+            'gesamt_arbeitszeit': format_minuten(gesamt_minuten),
+            'kalendertage': kalendertage,
+            'mitarbeiter': mitarbeiter_formatted,
+            'teilbereiche': teilbereiche_gesamt
+        }
+        
+        conn.close()
+        
+        print(f"✅ Bericht erstellt: {gesamt_minuten} min, {len(mitarbeiter_stats)} Mitarbeiter")
+        
+        # ✅ TEMPLATE RENDERN
+        return render_template('bericht.html', 
+                             projekt=projekt,
+                             bericht=bericht_data)
+        
+    except Exception as e:
+        print(f"❌ Fehler beim Bericht: {e}")
+        import traceback
+        traceback.print_exc()
+        return f"<h1>❌ Fehler beim Laden des Berichts</h1><p>{str(e)}</p><pre>{traceback.format_exc()}</pre>", 500
+    
 @app.route('/gesamt-bericht')
 def gesamt_bericht():
     """Gesamt-Bericht mit sicherer ID-Extraktion"""
