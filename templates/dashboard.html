@@ -1207,7 +1207,32 @@ function berichtAnzeigen(id) {
 function toggleProjektAuswahl() {
     console.log('Projekt ausgewählt');
 }
-
+function projektBeenden(projektId) {
+    if (!confirm('Projekt wirklich beenden?')) {
+        return;
+    }
+    
+    // WICHTIG: /projekte/ (nicht /projekt/)
+    fetch(`/projekte/${projektId}/beenden`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert(`Fehler: ${data.message}`);
+        }
+    })
+    .catch(error => {
+        console.error('Fehler:', error);
+        alert('Beenden fehlgeschlagen');
+    });
+}
 // ✅ MODAL FUNKTIONEN
 function openModal(modalId) {
     const modal = document.getElementById(modalId);

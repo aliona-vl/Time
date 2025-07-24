@@ -469,45 +469,51 @@ def aktivität_beenden(projekt_id):
             'message': f'Server-Fehler: {str(e)}',
             'error_type': type(e).__name__
         })
-    
-@app.route('/projekt/<int:projekt_id>/beenden', methods=['POST'])
+
+@app.route('/projekte/<int:projekt_id>/beenden', methods=['POST'])
+@login_required
 def projekt_beenden(projekt_id):
-    if 'benutzer_email' not in session:
-        return jsonify({'status': 'error', 'message': 'Nicht angemeldet'})
-
-    alle_projekte = load_data(PROJEKTE_FILE)
-    projekt = next((p for p in alle_projekte if p['id'] == projekt_id), None)
-
-    if not projekt:
-        return jsonify({'status': 'error', 'message': 'Projekt nicht gefunden'})
-
-    # Alle aktiven Sitzungen beenden
-    for mitarbeiter in list(projekt.get('aktive_sitzungen', {}).keys()):
-        aktive_sitzung = projekt['aktive_sitzungen'][mitarbeiter]
-        start_zeit = datetime.fromisoformat(aktive_sitzung['start'])
-        end_zeit = datetime.now()
-        dauer_minuten = int((end_zeit - start_zeit).total_seconds() / 60)
-
-        teilbereich = aktive_sitzung['teilbereich']
-
-        sitzung = {
-            'mitarbeiter': mitarbeiter,
-            'start': aktive_sitzung['start'],
-            'end': end_zeit.isoformat(),
-            'dauer_minuten': dauer_minuten
-        }
-
-        projekt['teilbereiche'][teilbereich]['sitzungen'].append(sitzung)
-        projekt['teilbereiche'][teilbereich]['gesamt_minuten'] += dauer_minuten
-
-    projekt['status'] = 'beendet'
-    projekt['beendet_am'] = datetime.now().isoformat()
-    projekt['aktive_sitzungen'] = {}
-
-    save_data(PROJEKTE_FILE, alle_projekte)
-    return jsonify({'status': 'success'})
-
-
+    try:
+        print(f"🏁 BEENDEN-REQUEST für Projekt ID: {projekt_id}")
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Erst prüfen ob Projekt existiert
+        cursor.execute('SELECT id, name, status FROM projekte WHERE id = %s', (projekt_id,))
+        projekt = cursor.fetchone()
+        
+        if not projekt:
+            conn.close()
+            return jsonify({
+                'status': 'error', 
+                'message': f'Projekt {projekt_id} nicht gefunden'
+            }), 404
+        
+        # Status auf 'beendet' setzen
+        cursor.execute(
+            'UPDATE projekte SET status = %s WHERE id = %s', 
+            ('beendet', projekt_id)
+        )
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Projekt "{projekt[1]}" wurde beendet'
+        })
+        
+    except Exception as e:
+        print(f"❌ FEHLER: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        return jsonify({
+            'status': 'error',
+            'message': f'Server-Fehler: {str(e)}'
+        }), 500
+    
 @app.route('/projekt/<int:projekt_id>/bericht')
 def projekt_bericht(projekt_id):
     if 'benutzer_email' not in session:
