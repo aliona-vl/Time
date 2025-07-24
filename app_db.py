@@ -1321,7 +1321,7 @@ def gesamt_bericht():
         traceback.print_exc()
         return f"<h1>Fehler: {str(e)}</h1><pre>{traceback.format_exc()}</pre>", 500
     
-    @app.route('/projekte/bulk-delete', methods=['POST'])
+@app.route('/projekte/bulk-delete', methods=['POST'])
 @login_required
 def projekte_bulk_delete():
     try:
