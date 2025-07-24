@@ -471,6 +471,76 @@ def aktivität_beenden(projekt_id):
             'message': f'Server-Fehler: {str(e)}',
             'error_type': type(e).__name__
         })
+    @app.route('/projekt/<int:projekt_id>/beenden', methods=['POST'])
+def projekt_beenden(projekt_id):
+    if 'benutzer_email' not in session:
+        return jsonify({'status': 'error', 'message': 'Nicht angemeldet'})
+
+    alle_projekte = load_data(PROJEKTE_FILE)
+    projekt = next((p for p in alle_projekte if p['id'] == projekt_id), None)
+
+    if not projekt:
+        return jsonify({'status': 'error', 'message': 'Projekt nicht gefunden'})
+
+    # Alle aktiven Sitzungen beenden
+    for mitarbeiter in list(projekt.get('aktive_sitzungen', {}).keys()):
+        aktive_sitzung = projekt['aktive_sitzungen'][mitarbeiter]
+        start_zeit = datetime.fromisoformat(aktive_sitzung['start'])
+        end_zeit = datetime.now()
+        dauer_minuten = int((end_zeit - start_zeit).total_seconds() / 60)
+
+        teilbereich = aktive_sitzung['teilbereich']
+
+        sitzung = {
+            'mitarbeiter': mitarbeiter,
+            'start': aktive_sitzung['start'],
+            'end': end_zeit.isoformat(),
+            'dauer_minuten': dauer_minuten
+        }
+
+        projekt['teilbereiche'][teilbereich]['sitzungen'].append(sitzung)
+        projekt['teilbereiche'][teilbereich]['gesamt_minuten'] += dauer_minuten
+
+    projekt['status'] = 'beendet'
+    projekt['beendet_am'] = datetime.now().isoformat()
+    projekt['aktive_sitzungen'] = {}
+
+    save_data(PROJEKTE_FILE, alle_projekte)
+    return jsonify({'status': 'success'})
+
+@app.route('/projekte/löschen', methods=['POST'])
+def projekte_löschen():
+    if 'benutzer_email' not in session:
+        return jsonify({'status': 'error', 'message': 'Nicht angemeldet'})
+
+    projekt_ids = request.json.get('projekt_ids', [])
+
+    alle_projekte = load_data(PROJEKTE_FILE)
+    neue_projekte = []
+
+    for projekt in alle_projekte:
+        if projekt['id'] not in projekt_ids:
+            neue_projekte.append(projekt)
+
+    save_data(PROJEKTE_FILE, neue_projekte)
+    return jsonify({'status': 'success'})
+
+@app.route('/projekt/<int:projekt_id>/bericht')
+def projekt_bericht(projekt_id):
+    if 'benutzer_email' not in session:
+        return redirect(url_for('index'))
+
+    alle_projekte = load_data(PROJEKTE_FILE)
+    projekt = next((p for p in alle_projekte if p['id'] == projekt_id), None)
+
+    if not projekt:
+        return "Projekt nicht gefunden", 404
+
+    if projekt['status'] != 'beendet':
+        return "Projekt ist noch nicht beendet", 400
+
+    bericht = erstelle_projekt_bericht(projekt)
+    return render_template('bericht.html', bericht=bericht, projekt=projekt)
 @app.route('/mitarbeiter/hinzufügen', methods=['POST'])
 @login_required
 def mitarbeiter_hinzufügen():
