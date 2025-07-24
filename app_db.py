@@ -551,33 +551,32 @@ def export_vorschau():
         bis_datum_str = request.form.get('bis_datum', '')
         format_type = request.form.get('format', 'pdf')
         
-        # MEHRERE DATUMSFORMATE UNTERSTÜTZEN
+        print(f"Export-Vorschau Request: von={von_datum_str}, bis={bis_datum_str}, format={format_type}")
+        
+        # Validierung der Eingaben
+        if not von_datum_str or not bis_datum_str:
+            return jsonify({
+                'status': 'error',
+                'message': 'Von- und Bis-Datum sind erforderlich'
+            })
+        
+        # Datum parsen - mehrere Formate unterstützen
         def parse_date(date_str):
-            # Mögliche Formate versuchen
-            formats = [
-                '%Y-%m-%d',      # 2025-06-24 (ISO)
-                '%d.%m.%Y',      # 24.06.2025 (Deutsch)
-                '%d/%m/%Y',      # 24/06/2025
-                '%m/%d/%Y'       # 06/24/2025 (US)
-            ]
-            
+            formats = ['%Y-%m-%d', '%d.%m.%Y', '%d/%m/%Y']
             for fmt in formats:
                 try:
                     return datetime.strptime(date_str, fmt)
                 except ValueError:
                     continue
-            
-            # Fallback: Heute's Datum
-            return datetime.now()
+            raise ValueError(f"Ungültiges Datumsformat: {date_str}")
         
-        # Datum validieren und parsen
         try:
             von_datum = parse_date(von_datum_str)
             bis_datum = parse_date(bis_datum_str)
-        except Exception:
+        except ValueError as e:
             return jsonify({
-                'status': 'error', 
-                'message': f'Ungültiges Datumsformat. Erhalten: Von="{von_datum_str}", Bis="{bis_datum_str}"'
+                'status': 'error',
+                'message': str(e)
             })
         
         # Bis-Datum bis Ende des Tages setzen
@@ -590,7 +589,112 @@ def export_vorschau():
                 'message': 'Von-Datum darf nicht nach Bis-Datum liegen'
             })
         
-        # ... REST DES CODES BLEIBT GLEICH ...
+        # Datenbank-Verbindung
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Benutzer-Berechtigung prüfen
+        benutzer_email = session.get('benutzer_email')
+        if not benutzer_email:
+            conn.close()
+            return jsonify({
+                'status': 'error',
+                'message': 'Nicht angemeldet'
+            })
+        
+        cursor.execute('SELECT team_code_verwendet FROM benutzer WHERE email = %s', (benutzer_email,))
+        benutzer_info = cursor.fetchone()
+        user_team_code = benutzer_info['team_code_verwendet'] if benutzer_info else None
+        
+        # Team-Code definieren (falls nicht vorhanden)
+        TEAM_CODE = "MASTER2024"  # Passen Sie dies an Ihren Code an
+        
+        # Projekte mit Sitzungen im Zeitraum laden
+        if user_team_code == TEAM_CODE:
+            # Admin kann alle Projekte sehen
+            projekte_query = '''
+                SELECT DISTINCT p.* FROM projekte p 
+                JOIN sitzungen s ON p.id = s.projekt_id 
+                WHERE s.start_zeit >= %s AND s.start_zeit <= %s
+                ORDER BY p.name
+            '''
+            cursor.execute(projekte_query, (von_datum, bis_datum))
+        else:
+            # Normale Benutzer nur ihre eigenen Projekte
+            projekte_query = '''
+                SELECT DISTINCT p.* FROM projekte p 
+                JOIN sitzungen s ON p.id = s.projekt_id 
+                WHERE p.ersteller = %s AND s.start_zeit >= %s AND s.start_zeit <= %s
+                ORDER BY p.name
+            '''
+            cursor.execute(projekte_query, (benutzer_email, von_datum, bis_datum))
+        
+        projekte_rows = cursor.fetchall()
+        projekte_data = []
+        gesamt_minuten_periode = 0
+        
+        for projekt_row in projekte_rows:
+            projekt = dict(projekt_row)
+            
+            # Sitzungen für dieses Projekt im Zeitraum laden
+            cursor.execute('''
+                SELECT mitarbeiter, teilbereich, start_zeit, end_zeit, dauer_minuten 
+                FROM sitzungen 
+                WHERE projekt_id = %s AND start_zeit >= %s AND start_zeit <= %s
+                AND end_zeit IS NOT NULL
+                ORDER BY start_zeit ASC
+            ''', (projekt['id'], von_datum, bis_datum))
+            
+            sitzungen = cursor.fetchall()
+            
+            if not sitzungen:  # Überspringen wenn keine abgeschlossenen Sitzungen
+                continue
+            
+            # Daten nach Mitarbeiter gruppieren
+            mitarbeiter_stats = {}
+            gesamt_minuten_projekt = 0
+            
+            for sitzung in sitzungen:
+                mitarbeiter = sitzung['mitarbeiter']
+                teilbereich = sitzung['teilbereich']
+                minuten = sitzung['dauer_minuten'] or 0
+                
+                if mitarbeiter not in mitarbeiter_stats:
+                    mitarbeiter_stats[mitarbeiter] = {
+                        'besprechung': 0,
+                        'zeichnung': 0,
+                        'aufmass': 0,
+                        'gesamt': 0
+                    }
+                
+                mitarbeiter_stats[mitarbeiter][teilbereich] += minuten
+                mitarbeiter_stats[mitarbeiter]['gesamt'] += minuten
+                gesamt_minuten_projekt += minuten
+            
+            projekt_dict = {
+                'id': projekt['id'],
+                'name': projekt['name'],
+                'kunde': projekt['kunde'],
+                'mitarbeiter_stats': mitarbeiter_stats,
+                'gesamt_minuten': gesamt_minuten_projekt
+            }
+            
+            projekte_data.append(projekt_dict)
+            gesamt_minuten_periode += gesamt_minuten_projekt
+        
+        conn.close()
+        
+        # Erfolgreiche Response zurückgeben
+        return jsonify({
+            'status': 'success',
+            'projekte': projekte_data,
+            'gesamt_minuten': gesamt_minuten_periode,
+            'anzahl_projekte': len(projekte_data),
+            'von_datum': von_datum_str,
+            'bis_datum': bis_datum_str,
+            'format': format_type,
+            'zeitraum_text': f"{von_datum.strftime('%d.%m.%Y')} bis {bis_datum.strftime('%d.%m.%Y')}"
+        })
         
     except Exception as e:
         print(f"Fehler bei Export-Vorschau: {str(e)}")
