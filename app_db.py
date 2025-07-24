@@ -710,7 +710,7 @@ def export_vorschau():
         })
 @app.route('/gesamt-bericht')
 def gesamt_bericht():
-    """Gesamt-Bericht mit korrekten Spalten-Namen: start_zeit und end_zeit"""
+    """Gesamt-Bericht mit korrekten Railway PostgreSQL Spalten-Namen"""
     try:
         von_datum_str = request.args.get('von', '')
         bis_datum_str = request.args.get('bis', '')
@@ -720,12 +720,12 @@ def gesamt_bericht():
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # ✅ PROJEKTE HOLEN
+        # ✅ PROJEKTE mit korrekten Spalten-Namen holen
         projekte_query = '''
-            SELECT DISTINCT p.id, p.name, p.kunde, p.status, p.erstellt_am
+            SELECT DISTINCT p.id, p.name, p.kunde, p.status, p.erstellt_an
             FROM projekte p
             WHERE p.status = 'beendet'
-            ORDER BY p.erstellt_am DESC
+            ORDER BY p.erstellt_an DESC
         '''
         
         cur.execute(projekte_query)
@@ -733,11 +733,15 @@ def gesamt_bericht():
         columns = [desc[0] for desc in cur.description]
         projekte_dict = [dict(zip(columns, row)) for row in projekte_raw]
         
+        print(f"🔍 Gefundene Projekte: {len(projekte_dict)}")
+        
         # PROJEKTE MIT SITZUNGEN AUFBAUEN
         projekte = []
         
         for projekt in projekte_dict:
-            projekt_id = projekt['id']
+            projekt_id = projekt['id']  # ✅ Sollte jetzt funktionieren
+            
+            print(f"🔍 Verarbeite Projekt ID: {projekt_id} ({type(projekt_id)})")
             
             # ✅ SITZUNGEN mit korrekten Spalten-Namen: start_zeit und end_zeit
             if von_datum_str and bis_datum_str:
@@ -764,6 +768,8 @@ def gesamt_bericht():
             sitzungen_columns = [desc[0] for desc in cur.description]
             sitzungen = [dict(zip(sitzungen_columns, row)) for row in sitzungen_raw]
             
+            print(f"🔍 Projekt {projekt_id}: {len(sitzungen)} Teilbereiche gefunden")
+            
             # Teilbereiche initialisieren
             teilbereiche = {
                 'besprechung': {'gesamt_minuten': 0},
@@ -777,6 +783,8 @@ def gesamt_bericht():
                 stunden = float(sitzung['stunden_gesamt'] or 0)
                 minuten = int(stunden * 60)
                 
+                print(f"🔍 Teilbereich: {teilbereich}, Stunden: {stunden}, Minuten: {minuten}")
+                
                 if teilbereich in teilbereiche:
                     teilbereiche[teilbereich]['gesamt_minuten'] = minuten
                 elif teilbereich == 'aufmaß':  # Alternative Schreibweise
@@ -787,7 +795,7 @@ def gesamt_bericht():
                 'name': projekt['name'],
                 'kunde': projekt['kunde'],
                 'status': projekt['status'],
-                'erstellt_am': projekt['erstellt_am'],
+                'erstellt_an': projekt['erstellt_an'],  # ✅ Korrigiert!
                 'teilbereiche': teilbereiche
             }
             
