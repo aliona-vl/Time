@@ -1120,10 +1120,36 @@ function closeExportModal() {
 function exportVorschau() {
     console.log('🔍 VORSCHAU STARTEN...');
     
-    const von = document.getElementById('vonDatum').value;
-    const bis = document.getElementById('bisDatum').value;
+    // ✅ ALLE MÖGLICHEN ID-NAMEN PROBIEREN
+    const vonField = document.getElementById('vonDatum') || 
+                     document.getElementById('exportVonDatum') || 
+                     document.querySelector('input[name="von_datum"]');
+                     
+    const bisField = document.getElementById('bisDatum') || 
+                     document.getElementById('exportBisDatum') || 
+                     document.querySelector('input[name="bis_datum"]');
     
-    console.log('Daten:', von, bis);
+    console.log('🔍 vonField:', vonField);
+    console.log('🔍 bisField:', bisField);
+    
+    if (!vonField || !bisField) {
+        console.error('❌ FELDER NICHT GEFUNDEN!');
+        
+        // DEBUG: Alle Input-Felder anzeigen
+        const allInputs = document.querySelectorAll('#exportModal input');
+        console.log('🔍 Alle Inputs im Modal:', allInputs);
+        allInputs.forEach((input, index) => {
+            console.log(`Input ${index}:`, input.id, input.name, input.type);
+        });
+        
+        alert('❌ FEHLER: Datum-Felder nicht gefunden! Schauen Sie in die Konsole.');
+        return;
+    }
+    
+    const von = vonField.value;
+    const bis = bisField.value;
+    
+    console.log('📅 Daten:', von, bis);
     
     if (!von || !bis) {
         alert('❌ Bitte beide Daten eingeben!');
