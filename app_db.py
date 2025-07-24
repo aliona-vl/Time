@@ -1320,6 +1320,39 @@ def gesamt_bericht():
         import traceback
         traceback.print_exc()
         return f"<h1>Fehler: {str(e)}</h1><pre>{traceback.format_exc()}</pre>", 500
+    
+    @app.route('/projekte/bulk-delete', methods=['POST'])
+@login_required
+def projekte_bulk_delete():
+    try:
+        data = request.get_json()
+        projekt_ids = data.get('projekt_ids', [])
+        
+        if not projekt_ids:
+            return jsonify({'status': 'error', 'message': 'Keine Projekte ausgewählt'})
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        deleted_count = 0
+        for projekt_id in projekt_ids:
+            cursor.execute('DELETE FROM aktive_sitzungen WHERE projekt_id = %s', (projekt_id,))
+            cursor.execute('DELETE FROM sitzungen WHERE projekt_id = %s', (projekt_id,))
+            cursor.execute('DELETE FROM projekte WHERE id = %s', (projekt_id,))
+            
+            if cursor.rowcount > 0:
+                deleted_count += 1
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'deleted_count': deleted_count
+        })
+        
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port, debug=False)

@@ -907,7 +907,8 @@
        name="projekt_ids"
        value="{{ projekt.id }}"
        data-projekt-id="{{ projekt.id }}"
-       data-status="{{ projekt.status }}">
+       data-status="{{ projekt.status }}"
+       onclick="event.stopPropagation(); toggleProjektAuswahl(this);">
                     </div>
 
                     <div class="projekt-status status-{{ projekt.status }}">
@@ -1204,8 +1205,69 @@ function berichtAnzeigen(id) {
     window.open('/projekt/' + id + '/bericht', '_blank');
 }
 
-function toggleProjektAuswahl() {
-    console.log('Projekt ausgewählt');
+// ✅ NEUE CHECKBOX FUNKTION
+function toggleProjektAuswahl(checkbox) {
+    console.log('Checkbox geklickt für Projekt:', checkbox.dataset.projektId);
+    
+    const selectedCheckboxes = document.querySelectorAll('.projekt-checkbox:checked');
+    const count = selectedCheckboxes.length;
+    
+    console.log('Ausgewählte Projekte:', count);
+    updateDeleteButtonState(count);
+}
+
+// ✅ DELETE BUTTON UPDATE
+function updateDeleteButtonState(count) {
+    const stickyControls = document.getElementById('stickyDeleteControls');
+    const countSpan = document.getElementById('selectedCount');
+    const badge = document.getElementById('selectionBadge');
+    const deleteBtn = document.getElementById('stickyLöschenBtn');
+    
+    if (count > 0) {
+        stickyControls.classList.remove('hidden');
+        countSpan.textContent = count;
+        badge.textContent = count;
+        deleteBtn.disabled = false;
+    } else {
+        stickyControls.classList.add('hidden');
+        deleteBtn.disabled = true;
+    }
+}
+
+// ✅ PROJEKTE LÖSCHEN
+function projekte_löschen() {
+    const selectedCheckboxes = document.querySelectorAll('.projekt-checkbox:checked');
+    const projektIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+    
+    if (projektIds.length === 0) {
+        alert('❌ Keine Projekte ausgewählt!');
+        return;
+    }
+    
+    const message = `Wirklich ${projektIds.length} Projekt(e) löschen?`;
+    
+    if (!confirm(message)) return;
+    
+    fetch('/projekte/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projekt_ids: projektIds })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert(`✅ ${data.deleted_count} Projekt(e) gelöscht!`);
+            location.reload();
+        } else {
+            alert('❌ Fehler: ' + data.message);
+        }
+    })
+    .catch(() => alert('❌ Netzwerk-Fehler!'));
+}
+
+// ✅ PROJEKT ÖFFNEN (ohne Umlaut)
+function projektOeffnen(id) {
+    window.location.href = '/projekt/' + id;
 }
 function projektBeenden(projektId) {
     if (!confirm('Projekt wirklich beenden?')) {
