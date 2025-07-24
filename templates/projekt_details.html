@@ -847,7 +847,7 @@
         }
 
         function projektBeendenBestätigen() {
-            fetch(`/projekt/{{ projekt.id }}/beenden`, {
+            fetch(`/projekte/{{ projekt.id }}/beenden`, {
                 method: 'POST'
             })
             .then(response => response.json())

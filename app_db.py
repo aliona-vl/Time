@@ -515,21 +515,49 @@ def projekt_beenden(projekt_id):
         }), 500
     
 @app.route('/projekt/<int:projekt_id>/bericht')
+@login_required
 def projekt_bericht(projekt_id):
-    if 'benutzer_email' not in session:
-        return redirect(url_for('index'))
-
-    alle_projekte = load_data(PROJEKTE_FILE)
-    projekt = next((p for p in alle_projekte if p['id'] == projekt_id), None)
-
-    if not projekt:
-        return "Projekt nicht gefunden", 404
-
-    if projekt['status'] != 'beendet':
-        return "Projekt ist noch nicht beendet", 400
-
-    bericht = erstelle_projekt_bericht(projekt)
-    return render_template('bericht.html', bericht=bericht, projekt=projekt)
+    try:
+        print(f"📊 Bericht für Projekt {projekt_id}")
+        
+        # Datenbankverbindung
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Projekt-Details abrufen
+        cursor.execute('SELECT id, name, kunde, status FROM projekte WHERE id = %s', (projekt_id,))
+        projekt = cursor.fetchone()
+        
+        if not projekt:
+            conn.close()
+            return "Projekt nicht gefunden", 404
+        
+        # Zeiterfassung für dieses Projekt
+        cursor.execute('''
+            SELECT datum, start_zeit, ende_zeit, minuten, beschreibung 
+            FROM zeiterfassung 
+            WHERE projekt_id = %s 
+            ORDER BY datum DESC, start_zeit DESC
+        ''', (projekt_id,))
+        
+        zeiten = cursor.fetchall()
+        conn.close()
+        
+        # Gesamt-Minuten berechnen
+        gesamt_minuten = sum(zeit[3] or 0 for zeit in zeiten) if zeiten else 0
+        gesamt_stunden = gesamt_minuten / 60
+        
+        return render_template('projekt_bericht.html', 
+                             projekt=projekt,
+                             zeiten=zeiten,
+                             gesamt_minuten=gesamt_minuten,
+                             gesamt_stunden=round(gesamt_stunden, 2))
+                             
+    except Exception as e:
+        print(f"❌ Fehler beim Bericht: {e}")
+        import traceback
+        traceback.print_exc()
+        return f"Fehler beim Laden des Berichts: {e}", 500
 @app.route('/mitarbeiter/hinzufügen', methods=['POST'])
 @login_required
 def mitarbeiter_hinzufügen():
