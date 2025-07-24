@@ -3,21 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAUSCH - Dashboard</title>
+    <title>RAUSCH - Gesamt-Bericht {{ von_datum }} bis {{ bis_datum }}</title>
     <style>
-        /* Ihr CSS bleibt komplett gleich */
         :root {
             --primary-dark: #4a5568;
             --primary-blue: #3498db;
             --background-light: #f8f9fa;
             --text-dark: #2c3e50;
             --text-light: #6c757d;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --white: #ffffff;
             --border-color: #dee2e6;
-            --success: #3e9e12bd;
-            --warning: #ffdd00d0;
-            --danger:#fa2d41c3;
-            --white: #ffffffB3;
-            --light-gray: #e9ecef;
+            --gray: #6c757d;
         }
 
         * {
@@ -28,1050 +27,423 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-blue) 100%);
-            min-height: 100vh;
+            background: white;
             padding: 15px;
-            font-size: 14px;
+            font-size: 12px;
+            line-height: 1.4;
         }
 
-        .main-container {
+        .report-container {
             max-width: 100%;
             margin: 0 auto;
-            background: var(--primary-dark);
-            border-radius: 20px;
-            padding: 15px;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
-            position: relative;
+            background: white;
         }
 
-        .main-container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--primary-blue), #2980b9);
-            border-radius: 20px 20px 0 0;
-        }
-
-        /* Alle anderen CSS-Regeln bleiben gleich... */
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            color: var(--white);
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .logo-section {
-            display: flex;
-            align-items: center;
-            order: 1;
-        }
-
-        .logo {
-            background: var(--white);
-            color: var(--text-dark);
-            font-size: 1.2em;
-            font-weight: bold;
-            padding: 8px 12px;
-            border-radius: 8px;
+        /* ✅ MOBILE HEADER */
+        .report-header {
             text-align: center;
-            min-width: 50px;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            font-size: 0.85em;
-            order: 2;
-        }
-
-        .user-info div {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .user-info a {
-            color: var(--light-gray);
-            text-decoration: none;
-            padding: 5px 10px;
-            border-radius: 5px;
-            background: rgba(255,255,255,0.1);
-            transition: all 0.3s ease;
-        }
-
-        .user-info a:hover {
-            background: rgba(255,255,255,0.2);
-        }
-
-        .controls-section {
-            background: rgba(255,255,255,0.1);
-            border-radius: 12px;
-            padding: 15px;
             margin-bottom: 20px;
-            backdrop-filter: blur(10px);
+            padding-bottom: 12px;
+            border-bottom: 3px solid var(--primary-blue);
         }
 
-        .controls-row {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 12px;
-            align-items: stretch;
-        }
-
-        .controls-row:last-child {
-            margin-bottom: 0;
-        }
-
-        .form-group {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .form-label {
-            color: var(--white);
+        .report-title {
+            font-size: 1.3em;
             font-weight: bold;
-            font-size: 0.8em;
+            color: var(--primary-dark);
+            margin-bottom: 6px;
+            line-height: 1.2;
         }
 
-        .form-input, .form-select {
-            padding: 10px;
-            border: 2px solid var(--border-color);
-            border-radius: 6px;
-            background: var(--white);
-            color: var(--text-dark);
-            font-size: 13px;
+        .report-subtitle {
+            font-size: 0.9em;
+            color: var(--text-light);
         }
 
-        .form-select {
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
-            background-position: right 8px center;
-            background-repeat: no-repeat;
-            background-size: 16px;
-            padding-right: 30px;
-        }
-
-        .management-controls {
-            display: flex;
-            gap: 8px;
+        /* ✅ MOBILE SECTIONS */
+        .report-section {
             margin-bottom: 20px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .icon-btn {
-            background: var(--primary-blue);
-            color: var(--white);
-            border: none;
-            padding: 10px;
+            background: var(--background-light);
             border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: all 0.3s ease;
-            width: 45px;
-            height: 45px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-        }
-
-        .icon-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        }
-
-        .btn {
-            padding: 10px 15px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 12px;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 5px;
-        }
-
-        .btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 3px 12px rgba(0,0,0,0.2);
-        }
-
-        .btn-success {
-            background: var(--success);
-            color: var(--white);
-        }
-
-        .btn-primary {
-            background: var(--primary-blue);
-            color: var(--white);
-        }
-
-        .btn-danger {
-            background: var(--danger);
-            color: var(--white);
-        }
-
-        .btn-secondary {
-            background: var(--text-light);
-            color: var(--white);
-        }
-
-        /* ✅ MODAL STYLES */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 9999;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(5px);
-        }
-
-        .modal.show {
-            display: flex !important;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-content {
-            background: var(--white);
-            margin: 20px;
-            padding: 20px;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 500px;
-            max-height: 90vh;
-            overflow-y: auto;
-            position: relative;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        }
-
-        .modal-title {
-            font-size: 1.2em;
-            font-weight: bold;
-            color: var(--text-dark);
-            margin-bottom: 15px;
-            text-align: center;
-        }
-
-        .modal-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .close {
-            color: var(--text-dark) !important;
-            font-size: 28px !important;
-            font-weight: bold !important;
-            cursor: pointer !important;
-            background: none !important;
-            border: none !important;
-            padding: 0 !important;
-            width: 30px !important;
-            height: 30px !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            border-radius: 50% !important;
-            transition: background 0.3s ease !important;
-            position: absolute !important;
-            top: 10px !important;
-            right: 10px !important;
-        }
-
-        .close:hover {
-            background: rgba(0, 0, 0, 0.1) !important;
-        }
-
-        .alert {
-            position: fixed;
-            top: 15px;
-            left: 15px;
-            right: 15px;
-            padding: 12px 15px;
-            border-radius: 6px;
-            font-weight: bold;
-            z-index: 1000;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            font-size: 0.85em;
-        }
-
-        .alert-success {
-            background: var(--success);
-            color: var(--white);
-        }
-
-        .alert-error {
-            background: var(--danger);
-            color: var(--white);
-        }
-
-        /* Projekt-Styles bleiben gleich... */
-        .projekte-section {
-            color: var(--white);
+            padding: 12px;
+            border-left: 3px solid var(--primary-blue);
         }
 
         .section-title {
-            font-size: 1.2em;
+            font-size: 1em;
             font-weight: bold;
-            margin-bottom: 15px;
-            text-align: center;
+            color: var(--primary-dark);
+            margin-bottom: 12px;
         }
 
-        .projekte-header {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-bottom: 15px;
-            align-items: center;
-        }
-
-        .projekte-stats {
-            display: flex;
-            gap: 15px;
-            font-size: 0.8em;
-            color: var(--light-gray);
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .projekte-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .projekt-card {
-            background: var(--light-gray);
-            border-radius: 12px;
-            padding: 15px;
-            border: 2px solid var(--border-color);
-            transition: all 0.3s ease;
-            position: relative;
-            cursor: pointer;
-        }
-
-        .projekt-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        /* ✅ MOBILE PROJECT ITEMS */
+        .projekt-item {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 10px;
+            page-break-inside: avoid;
         }
 
         .projekt-header {
             display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 12px;
-            gap:10px;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid var(--primary-blue);
         }
 
-        .projekt-name, .projekt-kunde {
-            font-size: 1.1em;
-            color: var(--text-dark);
-            margin-bottom: 4px;
-            line-height: 1.2;
-            flex: 1;
-            min-height: 20px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .projekt-checkbox {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-            margin-top: 2px;
-        }
-
-        .projekt-status {
-            display: inline-block;
-            padding: 3px 10px;
-            border-radius: 15px;
-            font-size: 0.7em;
+        .projekt-name {
+            font-size: 1em;
             font-weight: bold;
-            text-transform: uppercase;
-            margin-bottom: 12px;
+            color: var(--primary-dark);
+            line-height: 1.2;
         }
 
-        .status-laufend {
-            background: var(--success);
-            color: var(--white);
-        }
-
-        .status-pausiert {
-            background: var(--warning);
-            color: var(--text-dark);
-        }
-
-        .status-beendet {
-            background: var(--text-light);
-            color: var(--white);
-        }
-
-        .status-gestoppt {
-            background: var(--danger);
-            color: var(--white);
-        }
-
-        .projekt-progress {
-            margin-bottom: 12px;
-        }
-
-        .progress-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 6px;
+        .projekt-kunde {
+            color: var(--text-light);
+            font-style: italic;
             font-size: 0.85em;
         }
 
-        .progress-label {
-            color: var(--text-dark);
-            font-weight: 500;
-            text-transform: capitalize;
-        }
-
-        .progress-value {
-            color: var(--text-light);
+        .projekt-gesamt {
+            background: var(--primary-blue);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 10px;
             font-weight: bold;
+            font-size: 0.8em;
+            align-self: flex-start;
+            margin-top: 4px;
         }
 
-        .projekt-total {
-            border-top: 2px solid var(--border-color);
-            padding-top: 8px;
+        /* ✅ MOBILE TEILBEREICHE */
+        .teilbereiche-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 6px;
             margin-top: 8px;
+        }
+
+        .teilbereich-item {
+            background: var(--background-light);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 6px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+        }
+
+        .teilbereich-name {
             font-weight: bold;
-            color: var(--text-dark);
-        }
-
-        .projekt-actions {
+            font-size: 0.8em;
             display: flex;
-            gap: 6px;
-            margin-top: 12px;
+            align-items: center;
+            gap: 4px;
         }
 
-        .btn-sm {
-            padding: 6px 10px;
-            font-size: 11px;
+        .teilbereich-zeit {
+            color: var(--primary-blue);
+            font-weight: bold;
+            font-size: 0.8em;
         }
 
-        .empty-state {
+        /* ✅ BUTTON STYLES */
+        .action-buttons {
             text-align: center;
-            padding: 40px 20px;
-            color: var(--text-light);
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 2px solid var(--border-color);
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
         }
 
-        .empty-icon {
-            font-size: 3em;
-            margin-bottom: 15px;
-            opacity: 0.5;
+        .btn {
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            color: white;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
-        /* RESPONSIVE */
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn-print {
+            background: var(--success);
+        }
+
+        .btn-back {
+            background: var(--gray);
+        }
+
+        /* ✅ DESKTOP RESPONSIVE */
         @media (min-width: 768px) {
             body {
                 padding: 20px;
+                font-size: 14px;
+            }
+
+            .report-container {
+                max-width: 900px;
+            }
+
+            .report-title {
+                font-size: 1.8em;
+            }
+
+            .report-subtitle {
+                font-size: 1em;
+            }
+
+            .projekt-header {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .projekt-gesamt {
+                margin-top: 0;
+            }
+
+            .teilbereiche-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 10px;
+            }
+
+            .btn {
+                padding: 15px 30px;
                 font-size: 16px;
             }
+        }
 
-            .main-container {
-                max-width: 1200px;
-                padding: 20px;
+        /* ✅ MOBILE RESPONSIVE BUTTONS */
+        @media (max-width: 768px) {
+            .action-buttons {
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
             }
 
-            .projekte-grid {
-                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-                gap: 20px;
+            .btn {
+                width: 100%;
+                max-width: 250px;
+            }
+        }
+
+        /* ✅ PRINT OPTIMIZATION */
+        @media print {
+            .action-buttons {
+                display: none !important;
             }
 
-            .alert {
-                left: auto;
-                right: 20px;
-                width: auto;
-                max-width: 400px;
+            body {
+                background: white !important;
+                padding: 5px !important;
+                font-size: 9px !important;
+            }
+            
+            @page {
+                margin: 0.5cm;
+                size: A4;
+            }
+
+            .report-container {
+                transform: scale(0.95);
+                transform-origin: top left;
+                width: 105%;
+            }
+
+            .projekt-item {
+                page-break-inside: avoid;
+                break-inside: avoid;
+                margin-bottom: 8px !important;
+            }
+
+            .report-section {
+                page-break-inside: avoid;
+                break-inside: avoid;
+                margin-bottom: 12px !important;
+            }
+
+            .report-title {
+                font-size: 1.4em !important;
+                color: black !important;
+            }
+
+            .report-subtitle {
+                font-size: 0.8em !important;
+            }
+
+            .section-title {
+                font-size: 0.9em !important;
+                color: black !important;
+            }
+
+            .projekt-name {
+                font-size: 0.9em !important;
+                color: black !important;
+            }
+
+            .teilbereiche-grid {
+                grid-template-columns: repeat(3, 1fr) !important;
+                gap: 6px !important;
             }
         }
     </style>
 </head>
 <body>
-    <div class="main-container">
-        <div id="alertContainer"></div> 
-        
-        <!-- HEADER -->
-        <div class="header">
-            <div class="logo-section">
-                <div class="logo">R<br><span style="font-size: 0.6em;">RAUSCH</span></div>
-            </div>
-            <div class="user-info">
-                <div>👤 {{ benutzer_name }}</div>
-                <div><a href="/logout">Abmelden</a></div>
-            </div>
+    <div class="report-container">
+        <!-- ✅ MOBILE HEADER -->
+        <div class="report-header">
+            <div class="report-title">📊 Gesamt-Bericht RAUSCH</div>
+            <div class="report-subtitle">Zeitraum: {{ von_datum }} bis {{ bis_datum }}</div>
         </div>
 
-        <!-- Neues Projekt erstellen -->
-        <div class="controls-section">
-            <form id="projektForm" onsubmit="projektErstellen(event)">
-                <div class="controls-row">
-                    <div class="form-group">
-                        <label class="form-label">Projektname</label>
-                        <input type="text" class="form-input" id="projektName" placeholder="z.B. Einfamilienhaus Müller" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Kunde</label>
-                        <select class="form-select" id="projektKunde" required>
-                            <option value="">Kunde wählen...</option>
-                            {% for kunde in kunden %}
-                            <option value="{{ kunde }}">{{ kunde }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
-                <div class="controls-row">
-                    <button type="submit" class="btn btn-success" style="width: 100%;">📝 Neues Projekt erstellen</button>
-                </div>
-            </form>
-        </div>
-
-        <!-- MANAGEMENT CONTROLS -->
-        <div class="management-controls">
-            <button class="icon-btn" onclick="openModal('mitarbeiterModal')" title="Mitarbeiter verwalten">👥</button>
-            <button class="icon-btn" onclick="openModal('kundenModal')" title="Kunden verwalten">🏢</button>
-            <button class="icon-btn" onclick="openExportModal()" title="Daten exportieren">📊</button>
-        </div>
-
-        <!-- Projekte Section -->
-        <div class="projekte-section">
-            <div class="section-title">Meine Projekte</div>
+        <!-- ✅ SUMMARY LEISTE WIE IN VORSCHAU -->
+        <div class="summary-bar" style="background: var(--primary-blue); color: white; padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 20px; font-weight: bold; font-size: 14px;">
+            📊 {{ projekte|length }} Projekt(e) | 
+            ⏱️ 
+            {% set alle_zeit = 0 %}
+            {% for projekt in projekte %}
+                {% set projekt_zeit = projekt.teilbereiche.besprechung.gesamt_minuten + projekt.teilbereiche.zeichnung.gesamt_minuten + projekt.teilbereiche.aufmass.gesamt_minuten %}
+                {% set alle_zeit = alle_zeit + projekt_zeit %}
+            {% endfor %}
             
-            <div class="projekte-header">
-                <div class="projekte-stats">
-                    <span>📊 {{ projekte|length }} gesamt</span>
-                    <span>🟢 {{ projekte|selectattr('status', 'equalto', 'laufend')|list|length }} aktiv</span>
-                    <span>🔴 {{ projekte|selectattr('status', 'equalto', 'beendet')|list|length }} beendet</span>
-                </div>
-            </div>
-
-            <!-- Projekte Grid -->
-            {% if projekte %}
-            <div class="projekte-grid">
-                {% for projekt in projekte %}
-                <div class="projekt-card status-{{ projekt.status }}" 
-                     data-projekt-id="{{ projekt.id }}" 
-                     data-projekt-status="{{ projekt.status }}"
-                     onclick="projektÖffnen({{ projekt.id }})">
-                    
-                    <div class="projekt-header">
-                        <div>
-                            <div class="projekt-name">
-                                {{ projekt.name or 'Projekt #' + projekt.id|string }}
-                            </div>
-                            <div class="projekt-kunde">
-                                👤 {{ projekt.kunde or 'Kunde unbekannt' }}
-                            </div>
-                        </div>
-                        <input type="checkbox" 
-                               class="projekt-checkbox" 
-                               id="projekt_{{ projekt.id }}"
-                               onclick="event.stopPropagation(); toggleProjektAuswahl({{ projekt.id }}, '{{ projekt.status }}')">
-                    </div>
-
-                    <div class="projekt-status status-{{ projekt.status }}">
-                        {{ projekt.status|title }}
-                    </div>
-
-                    <div class="projekt-progress">
-                        {% for tb_name, tb_data in projekt.teilbereiche.items() %}
-                        <div class="progress-item">
-                            <span class="progress-label">{{ tb_name|title }}:</span>
-                            <span class="progress-value">
-                                {% if tb_data.gesamt_minuten < 60 %}
-                                    {{ tb_data.gesamt_minuten }}min
-                                {% else %}
-                                    {{ tb_data.gesamt_minuten // 60 }}h {{ tb_data.gesamt_minuten % 60 }}min
-                                {% endif %}
-                            </span>
-                        </div>
-                        {% endfor %}
-                    </div>
-
-                    <div class="projekt-total">
-                        <span>Gesamt:</span>
-                        {% set gesamt_minuten = projekt.teilbereiche.besprechung.gesamt_minuten + projekt.teilbereiche.zeichnung.gesamt_minuten + projekt.teilbereiche.aufmass.gesamt_minuten %}
-                        <span>
-                            {% if gesamt_minuten < 60 %}
-                                {{ gesamt_minuten }}min
-                            {% else %}
-                                {{ gesamt_minuten // 60 }}h {{ gesamt_minuten % 60 }}min
-                            {% endif %}
-                        </span>
-                    </div>
-
-                    <div class="projekt-actions">
-                        {% if projekt.status == 'beendet' %}
-                            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); berichtAnzeigen({{ projekt.id }})">📄 Bericht</button>
-                        {% else %}
-                            <button class="btn btn-success btn-sm" onclick="event.stopPropagation(); projektÖffnen({{ projekt.id }})">▶️ Bearbeiten</button>
-                        {% endif %}
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
+            {% if alle_zeit < 60 %}
+                {{ alle_zeit }}min
             {% else %}
-            <div class="empty-state">
-                <div class="empty-icon">📋</div>
-                <h3>Noch keine Projekte</h3>
-                <p>Erstelle dein erstes Projekt!</p>
-            </div>
+                {{ alle_zeit // 60 }}h {{ alle_zeit % 60 }}min
             {% endif %}
         </div>
 
-        <!-- ✅ EXPORT MODAL - KORRIGIERT -->
-        <div id="exportModal" class="modal">
-            <div class="modal-content">
-                <span class="close" onclick="closeExportModal()">&times;</span>
-                <div class="modal-title">📊 Daten exportieren</div>
-                
-                <form id="exportForm">
-                    <div class="form-group">
-                        <label class="form-label">📅 Von Datum:</label>
-                        <input type="date" class="form-input" id="vonDatum" name="von_datum" required>
+        <!-- ✅ MOBILE PROJECT LIST -->
+        <div class="report-section">
+            <!-- ... rest der Projekte ... -->
+
+        <!-- ✅ MOBILE PROJECT LIST -->
+        <div class="report-section">
+            <div class="section-title">🏗️ Beendete Projekte ({{ projekte|length }})</div>
+            
+            {% if projekte %}
+                {% for projekt in projekte %}
+                <div class="projekt-item">
+                    <div class="projekt-header">
+                        <div>
+                            <div class="projekt-name">{{ projekt.name }}</div>
+                            <div class="projekt-kunde">👤 {{ projekt.kunde }}</div>
+                        </div>
+                        <div class="projekt-gesamt">
+                            {% set gesamt = projekt.teilbereiche.besprechung.gesamt_minuten + projekt.teilbereiche.zeichnung.gesamt_minuten + projekt.teilbereiche.aufmass.gesamt_minuten %}
+                            {% if gesamt < 60 %}
+                                {{ gesamt }}min
+                            {% else %}
+                                {{ gesamt // 60 }}h {{ gesamt % 60 }}min
+                            {% endif %}
+                        </div>
                     </div>
                     
-                    <div class="form-group">
-                        <label class="form-label">📅 Bis Datum:</label>
-                        <input type="date" class="form-input" id="bisDatum" name="bis_datum" required>
+                    <!-- ✅ MOBILE TEILBEREICHE -->
+                    <div class="teilbereiche-grid">
+                        <div class="teilbereich-item">
+                            <div class="teilbereich-name">💬 Besprechung</div>
+                            <div class="teilbereich-zeit">
+                                {% if projekt.teilbereiche.besprechung.gesamt_minuten < 60 %}
+                                    {{ projekt.teilbereiche.besprechung.gesamt_minuten }}min
+                                {% else %}
+                                    {{ projekt.teilbereiche.besprechung.gesamt_minuten // 60 }}h {{ projekt.teilbereiche.besprechung.gesamt_minuten % 60 }}min
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="teilbereich-item">
+                            <div class="teilbereich-name">📐 Zeichnung</div>
+                            <div class="teilbereich-zeit">
+                                {% if projekt.teilbereiche.zeichnung.gesamt_minuten < 60 %}
+                                    {{ projekt.teilbereiche.zeichnung.gesamt_minuten }}min
+                                {% else %}
+                                    {{ projekt.teilbereiche.zeichnung.gesamt_minuten // 60 }}h {{ projekt.teilbereiche.zeichnung.gesamt_minuten % 60 }}min
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="teilbereich-item">
+                            <div class="teilbereich-name">📏 Aufmaß</div>
+                            <div class="teilbereich-zeit">
+                                {% if projekt.teilbereiche.aufmass.gesamt_minuten < 60 %}
+                                    {{ projekt.teilbereiche.aufmass.gesamt_minuten }}min
+                                {% else %}
+                                    {{ projekt.teilbereiche.aufmass.gesamt_minuten // 60 }}h {{ projekt.teilbereiche.aufmass.gesamt_minuten % 60 }}min
+                                {% endif %}
+                            </div>
+                        </div>
                     </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">🎯 Format:</label>
-                        <select class="form-select" id="exportFormat">
-                            <option value="pdf">📄 PDF-Bericht</option>
-                        </select>
-                    </div>
-                </form>
-
-                <div class="modal-buttons">
-                    <button class="btn btn-primary" onclick="exportVorschau()">🔍 Vorschau anzeigen</button>
-                    <button class="btn btn-secondary" onclick="closeExportModal()">Abbrechen</button>
                 </div>
-            </div>
+                {% endfor %}
+            {% else %}
+                <div style="text-align: center; padding: 20px; color: var(--text-light); font-style: italic;">
+                    📭 Keine beendeten Projekte im gewählten Zeitraum gefunden.
+                </div>
+            {% endif %}
         </div>
 
-        <!-- Mitarbeiter Modal -->
-        <div id="mitarbeiterModal" class="modal">
-            <div class="modal-content">
-                <span class="close" onclick="closeModal('mitarbeiterModal')">&times;</span>
-                <div class="modal-title">👥 Mitarbeiter verwalten</div>
-                
-                <form id="mitarbeiterForm">
-                    <div class="form-group">
-                        <input type="text" class="form-input" id="neuerMitarbeiter" placeholder="Mitarbeiter Name" required>
-                    </div>
-                    <button type="submit" class="btn btn-success">➕ Hinzufügen</button>
-                </form>
-
-                <div style="background: var(--white); border-radius: 8px; padding: 12px; margin-top: 15px;">
-                    <div style="font-weight: bold; color: var(--text-dark); margin-bottom: 8px; font-size: 0.9em;">Aktuelle Mitarbeiter:</div>
-                    <div style="max-height: 120px; overflow-y: auto;" id="mitarbeiterListe">
-                        {% for ma in mitarbeiter %}
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--light-gray); font-size: 0.85em;">
-                            <span>{{ ma }}</span>
-                            <button style="background: var(--danger); color: var(--white); border: none; padding: 2px 5px; border-radius: 3px; cursor: pointer; font-size: 10px;" onclick="mitarbeiterLöschen('{{ ma }}')">❌</button>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-
-                <div class="modal-buttons">
-                    <button class="btn btn-secondary" onclick="closeModal('mitarbeiterModal')">Schließen</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Kunden Modal -->
-        <div id="kundenModal" class="modal">
-            <div class="modal-content">
-                <span class="close" onclick="closeModal('kundenModal')">&times;</span>
-                <div class="modal-title">🏢 Kunden verwalten</div>
-                
-                <form id="kundenForm">
-                    <div class="form-group">
-                        <input type="text" class="form-input" id="neuerKunde" placeholder="Kunde/Firma Name" required>
-                    </div>
-                    <button type="submit" class="btn btn-success">➕ Hinzufügen</button>
-                </form>
-
-                <div style="background: var(--white); border-radius: 8px; padding: 12px; margin-top: 15px;">
-                    <div style="font-weight: bold; color: var(--text-dark); margin-bottom: 8px; font-size: 0.9em;">Aktuelle Kunden:</div>
-                    <div style="max-height: 120px; overflow-y: auto;" id="kundenListe">
-                        {% for kunde in kunden %}
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--light-gray); font-size: 0.85em;">
-                            <span>{{ kunde }}</span>
-                            <button style="background: var(--danger); color: var(--white); border: none; padding: 2px 5px; border-radius: 3px; cursor: pointer; font-size: 10px;" onclick="kundeLöschen('{{ kunde }}')">❌</button>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-
-                <div class="modal-buttons">
-                    <button class="btn btn-secondary" onclick="closeModal('kundenModal')">Schließen</button>
-                </div>
-            </div>
+        <!-- ✅ PROJEKT-LISTE + BUTTONS (KEIN AUTO-PRINT) -->
+        <div class="action-buttons">
+            
+            <button onclick="window.print()" class="btn btn-print">
+                🖨️ Drucken
+            </button>
+            
+            <button onclick="goBack()" class="btn btn-back">
+                ← Zurück
+            </button>
+            
         </div>
     </div>
 
     <script>
-        // ✅ EXPORT-MODAL FUNKTIONEN - KORRIGIERT
-        function openExportModal() {
-            console.log('🚀 Opening Export Modal...');
-            
-            const modal = document.getElementById('exportModal');
-            if (!modal) {
-                alert('Export-Modal nicht gefunden!');
-                return;
-            }
-            
-            modal.style.display = 'flex';
-            modal.classList.add('show');
-            console.log('✅ Modal angezeigt');
-            
-            // Standard-Datumsbereich setzen (letzte 30 Tage)
-            const heute = new Date();
-            const vor30Tagen = new Date();
-            vor30Tagen.setDate(heute.getDate() - 30);
-            
-            const vonDatumField = document.getElementById('vonDatum');
-            const bisDatumField = document.getElementById('bisDatum');
-            
-            if (vonDatumField && bisDatumField) {
-                vonDatumField.value = vor30Tagen.toISOString().split('T')[0];
-                bisDatumField.value = heute.toISOString().split('T')[0];
-                
-                console.log('✅ Standard-Daten gesetzt:', {
-                    von: vonDatumField.value,
-                    bis: bisDatumField.value
-                });
+        // ✅ ZURÜCK FUNKTION
+        function goBack() {
+            // Versuche verschiedene Wege zurück zu gehen
+            if (window.history.length > 1) {
+                window.history.back();
             } else {
-                console.error('❌ Datum-Felder nicht gefunden!');
+                window.location.href = '/dashboard';
             }
         }
 
-        function closeExportModal() {
-            console.log('🔒 Closing Export Modal...');
-            const modal = document.getElementById('exportModal');
-            if (modal) {
-                modal.style.display = 'none';
-                modal.classList.remove('show');
-                console.log('✅ Modal geschlossen');
+        // ✅ ESC-TASTE FÜR ZURÜCK
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                goBack();
             }
-        }
-
-        function exportVorschau() {
-            console.log('🔍 Starting Export Preview...');
-            
-            const vonDatumField = document.getElementById('vonDatum');
-            const bisDatumField = document.getElementById('bisDatum');
-            const formatField = document.getElementById('exportFormat');
-            
-            if (!vonDatumField || !bisDatumField) {
-                alert('Datum-Felder nicht gefunden!');
-                return;
-            }
-            
-            const vonDatum = vonDatumField.value;
-            const bisDatum = bisDatumField.value;
-            const format = formatField ? formatField.value : 'pdf';
-            
-            console.log('📊 Export-Daten:', {
-                von: vonDatum,
-                bis: bisDatum,
-                format: format
-            });
-            
-            if (!vonDatum || !bisDatum) {
-                alert('Bitte wählen Sie Von- und Bis-Datum');
-                return;
-            }
-            
-            if (new Date(vonDatum) > new Date(bisDatum)) {
-                alert('Von-Datum darf nicht nach Bis-Datum liegen');
-                return;
-            }
-            
-            // Loading-Anzeige
-            const vorschauBtn = event.target;
-            const originalText = vorschauBtn.innerHTML;
-            vorschauBtn.innerHTML = '⏳ Lade Vorschau...';
-            vorschauBtn.disabled = true;
-            
-            // Form-Daten sammeln
-            const formData = new FormData();
-            formData.append('von_datum', vonDatum);
-            formData.append('bis_datum', bisDatum);
-            formData.append('format', format);
-            
-            // Request senden
-            fetch('/export/vorschau', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                console.log('📡 Response Status:', response.status);
-                if (!response.ok) {
-                    throw new Error('HTTP ' + response.status);
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('📨 Server Response:', data);
-                
-                // Button zurücksetzen
-                vorschauBtn.innerHTML = originalText;
-                vorschauBtn.disabled = false;
-                
-                if (data.status === 'success') {
-                    // Gesamt-Bericht in neuem Tab öffnen
-                    const url = '/gesamt-bericht?von=' + vonDatum + '&bis=' + bisDatum + '&format=' + format;
-                    console.log('🌐 Opening URL:', url);
-                    
-                    const newTab = window.open(url, '_blank');
-                    if (!newTab) {
-                        alert('Popup wurde blockiert. Bitte erlauben Sie Popups für diese Seite.');
-                        return;
-                    }
-                    
-                    // Modal schließen
-                    closeExportModal();
-                    
-                    // Success-Message
-                    showAlert('✅ Export-Vorschau für ' + (data.anzahl_projekte || 0) + ' Projekt(e) geöffnet', 'success');
-                } else {
-                    alert('❌ Fehler bei Vorschau: ' + (data.message || 'Unbekannter Fehler'));
-                }
-            })
-            .catch(error => {
-                console.error('❌ Export-Fehler:', error);
-                
-                // Button zurücksetzen
-                vorschauBtn.innerHTML = originalText;
-                vorschauBtn.disabled = false;
-                
-                alert('❌ Netzwerk-Fehler bei Export-Vorschau: ' + error.message);
-            });
-        }
-
-        // Alle anderen Funktionen
-        function projektErstellen(event) {
-            event.preventDefault();
-            
-            const name = document.getElementById('projektName').value.trim();
-            const kunde = document.getElementById('projektKunde').value.trim();
-            
-            if (!name) {
-                showAlert('❌ Projektname ist erforderlich!');
-                return;
-            }
-            
-            if (!kunde) {
-                showAlert('❌ Kunde ist erforderlich!');
-                return;
-            }
-            
-            fetch('/projekt/neu', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: 'name=' + encodeURIComponent(name) + '&kunde=' + encodeURIComponent(kunde)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    showAlert('✅ Projekt erfolgreich erstellt!', 'success');
-                    document.getElementById('projektName').value = '';
-                    document.getElementById('projektKunde').value = '';
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    showAlert('❌ ' + (data.message || 'Fehler beim Erstellen'));
-                }
-            })
-            .catch(error => {
-                showAlert('❌ Fehler beim Erstellen des Projekts');
-            });
-        }
-
-        function projektÖffnen(projektId) {
-            window.location.href = '/projekt/' + projektId;
-        }
-
-        function berichtAnzeigen(projektId) {
-            window.open('/projekt/' + projektId + '/bericht', '_blank');
-        }
-
-        function toggleProjektAuswahl(projektId, status) {
-            // Placeholder für Mehrfachauswahl
-            console.log('Projekt ausgewählt:', projektId);
-        }
-
-        function openModal(modalId) {
-            const modal = document.getElementById(modalId);
-            if (modal) {
-                modal.style.display = 'flex';
-                modal.classList.add('show');
-            }
-        }
-
-        function closeModal(modalId) {
-            const modal = document.getElementById(modalId);
-            if (modal) {
-                modal.style.display = 'none';
-                modal.classList.remove('show');
-            }
-        }
-
-        function showAlert(message, type) {
-            type = type || 'error';
-            const alertContainer = document.getElementById('alertContainer');
-            alertContainer.innerHTML = '<div class="alert alert-' + type + '">' + message + '</div>';
-            
-            setTimeout(() => {
-                alertContainer.innerHTML = '';
-            }, 3000);
-        }
-
-        // Management Functions
-        document.getElementById('mitarbeiterForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const name = document.getElementById('neuerMitarbeiter').value.trim();
-            if (!name) return;
-            
-            fetch('/mitarbeiter/hinzufügen', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: 'name=' + encodeURIComponent(name)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    showAlert('✅ Mitarbeiter hinzugefügt!', 'success');
-                    location.reload();
-                } else {
-                    showAlert('❌ ' + data.message);
-                }
-            });
         });
 
-        document.getElementById('kundenForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const name = document.getElementById('neuerKunde').value.trim();
-            if (!name) return;
-            
-            fetch('/kunde/hinzufügen', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: 'name=' + encodeURIComponent(name)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    showAlert('✅ Kunde hinzugefügt!', 'success');
-                    location.reload();
-                } else {
-                    showAlert('❌ ' + data.message);
-                }
-            });
-        });
+        // ✅ KEIN AUTO-PRINT - NUR MANUELL ÜBER BUTTON
+        // Du siehst alles, druckst nur wenn du willst
 
-        function mitarbeiterLöschen(name) {
-            if (confirm('Mitarbeiter "' + name + '" wirklich löschen?')) {
-                fetch('/mitarbeiter/löschen', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: 'name=' + encodeURIComponent(name)
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        showAlert('✅ Mitarbeiter gelöscht!', 'success');
-                        location.reload();
-                    }
-                });
-            }
+        // ✅ MOBILE-FRIENDLY OPTIMIERUNGEN
+        if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches) {
+            document.addEventListener('DOMContentLoaded', function() {
+                const meta = document.createElement('meta');
+                meta.name = 'viewport';
+                meta.content = 'width=device-width, initial-scale=0.9';
+                document.getElementsByTagName('head')[0].appendChild(meta);
+            });
         }
-
-        function kundeLöschen(name) {
-            if (confirm('Kunde "' + name + '" wirklich löschen?')) {
-                fetch('/kunde/löschen', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: 'name=' + encodeURIComponent(name)
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        showAlert('✅ Kunde gelöscht!', 'success');
-                        location.reload();
-                    }
-                });
-            }
-        }
-
-        // Event Listeners
-        document.addEventListener('DOMContentLoaded', function() {
-            // ESC-Taste = Modal schließen
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape') {
-                    const openModals = document.querySelectorAll('.modal.show');
-                    openModals.forEach(modal => {
-                        modal.classList.remove('show');
-                        modal.style.display = 'none';
-                    });
-                }
-            });
-            
-            // Außerhalb Modal klicken = schließen
-            document.querySelectorAll('.modal').forEach(modal => {
-                modal.addEventListener('click', function(e) {
-                    if (e.target === this) {
-                        this.classList.remove('show');
-                        this.style.display = 'none';
-                    }
-                });
-            });
-        });
-
-        console.log('✅ Dashboard JavaScript geladen');
     </script>
 </body>
 </html>
