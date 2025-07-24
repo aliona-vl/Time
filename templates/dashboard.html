@@ -1076,410 +1076,259 @@
     </div>
 
     <script>
-        // ✅ Alle JavaScript-Funktionen bleiben gleich, nur optimiert
-        function projektErstellen(event) {
-            event.preventDefault();
-            
-            const name = document.getElementById('projektName').value.trim();
-            const kunde = document.getElementById('projektKunde').value.trim();
-            
-            if (!name) {
-                showAlert('❌ Projektname ist erforderlich!');
-                return;
-            }
-            
-            if (!kunde) {
-                showAlert('❌ Kunde ist erforderlich!');
-                return;
-            }
-            
-            fetch('/projekt/neu', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: `name=${encodeURIComponent(name)}&kunde=${encodeURIComponent(kunde)}`
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    showAlert('✅ Projekt erfolgreich erstellt!', 'success');
-                    document.getElementById('projektName').value = '';
-                    document.getElementById('projektKunde').value = '';
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    showAlert('❌ ' + (data.message || 'Fehler beim Erstellen'));
-                }
-            })
-            .catch(error => {
-                showAlert('❌ Fehler beim Erstellen des Projekts');
-            });
-        }
+console.log('🔥 SCRIPT STARTET...');
 
-        function projektÖffnen(projektId) {
-            window.location.href = `/projekt/${projektId}`;
-        }
-
-        function berichtAnzeigen(projektId) {
-            window.open(`/projekt/${projektId}/bericht`, '_blank');
-        }
-
-        function toggleProjektAuswahl(projektId, status) {
-            updateLöschenButton();
-        }
-
-        function updateLöschenButton() {
-            const checkedBoxes = document.querySelectorAll('.projekt-checkbox:checked');
-            const count = checkedBoxes.length;
-            
-            const stickyControls = document.getElementById('stickyDeleteControls');
-            const stickyBtn = document.getElementById('stickyLöschenBtn');
-            const selectedCount = document.getElementById('selectedCount');
-            const selectionBadge = document.getElementById('selectionBadge');
-            
-            if (count > 0) {
-                stickyControls.classList.remove('hidden');
-                stickyBtn.disabled = false;
-                selectedCount.textContent = count;
-                selectionBadge.textContent = count;
-                selectionBadge.style.display = 'flex';
-            } else {
-                stickyControls.classList.add('hidden');
-                stickyBtn.disabled = true;
-                selectionBadge.style.display = 'none';
-            }
-        }
-
-        function projekte_löschen() {
-            const checkedBoxes = document.querySelectorAll('.projekt-checkbox:checked');
-            const projektIds = [];
-            
-            checkedBoxes.forEach(checkbox => {
-                const projektId = checkbox.id.replace('projekt_', '');
-                if (projektId && !isNaN(projektId)) {
-                    projektIds.push(parseInt(projektId));
-                }
-            });
-            
-            if (projektIds.length === 0) {
-                showAlert('❌ Keine Projekte ausgewählt!');
-                return;
-            }
-            
-            if (confirm(`⚠️ ${projektIds.length} Projekt(e) wirklich löschen?`)) {
-                fetch('/projekte/löschen', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({projekt_ids: projektIds})
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        showAlert('✅ Projekte erfolgreich gelöscht!', 'success');
-                        setTimeout(() => location.reload(), 1000);
-                    } else {
-                        showAlert('❌ Fehler: ' + (data.message || 'Unbekannter Fehler'));
-                    }
-                })
-                .catch(error => {
-                    showAlert('❌ Netzwerk-Fehler beim Löschen!');
-                });
-            }
-        }
-
-       function exportVorschau() {
-    console.log('Starting Export Preview...');
+// ✅ EXPORT FUNKTIONEN
+function openExportModal() {
+    console.log('🔥 Export Button geklickt!');
     
-    // Werte aus den Input-Feldern holen
-    const vonDatumField = document.getElementById('vonDatum');
-    const bisDatumField = document.getElementById('bisDatum');
-    const formatRadio = document.querySelector('input[name="format"]:checked');
+    const modal = document.getElementById('exportModal');
+    console.log('Modal gefunden:', modal);
     
-    if (!vonDatumField || !bisDatumField) {
-        alert('Datum-Felder nicht gefunden!');
+    if (!modal) {
+        console.error('❌ MODAL NICHT GEFUNDEN!');
+        alert('❌ FEHLER: Export-Modal nicht gefunden!');
         return;
     }
     
-    const vonDatum = vonDatumField.value;
-    const bisDatum = bisDatumField.value;
-    const format = formatRadio ? formatRadio.value : 'pdf';
+    modal.style.display = 'flex';
+    console.log('✅ Modal sollte jetzt sichtbar sein');
     
-    // DEBUG: Werte in Konsole ausgeben
-    console.log('Export-Daten:', {
-        von: vonDatum,
-        bis: bisDatum,
-        format: format
-    });
+    const heute = new Date().toISOString().split('T')[0];
+    const vor30 = new Date();
+    vor30.setDate(vor30.getDate() - 30);
+    const vor30Str = vor30.toISOString().split('T')[0];
     
-    // Validierung
-    if (!vonDatum || !bisDatum) {
-        alert('Bitte wählen Sie Von- und Bis-Datum');
-        return;
-    }
+    const vonField = document.getElementById('vonDatum');
+    const bisField = document.getElementById('bisDatum');
     
-    if (new Date(vonDatum) > new Date(bisDatum)) {
-        alert('Von-Datum darf nicht nach Bis-Datum liegen');
-        return;
-    }
+    if (vonField) vonField.value = vor30Str;
+    if (bisField) bisField.value = heute;
     
-    // Form-Daten sammeln
-    const formData = new FormData();
-    formData.append('von_datum', vonDatum);
-    formData.append('bis_datum', bisDatum);
-    formData.append('format', format);
-    
-    // DEBUG: FormData ausgeben
-    console.log('Sending FormData:');
-    for (let pair of formData.entries()) {
-        console.log(pair[0] + ': ' + pair[1]);
-    }
-    
-    // Loading-Anzeige
-    const vorschauBtn = event.target;
-    const originalText = vorschauBtn.innerHTML;
-    vorschauBtn.innerHTML = '⏳ Lade...';
-    vorschauBtn.disabled = true;
-    
-    // Request senden
-    fetch('/export/vorschau', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => {
-        console.log('Response Status:', response.status);
-        return response.json();
-    })
-    .then(data => {
-        console.log('Server Response:', data);
-        
-        // Button zurücksetzen
-        vorschauBtn.innerHTML = originalText;
-        vorschauBtn.disabled = false;
-        
-        if (data.status === 'success') {
-            // Gesamt-Bericht Route öffnen
-            const url = `/gesamt-bericht?von=${vonDatum}&bis=${bisDatum}&format=${format}`;
-            console.log('Opening URL:', url);
-            
-            // Neuer Tab öffnen
-            window.open(url, '_blank');
-            
-            // Modal schließen
-            closeExportModal();
-            
-            // Success-Message
-            showMessage(`Export-Vorschau für ${data.anzahl_projekte} Projekt(e) geöffnet`, 'success');
-        } else {
-            alert('Fehler bei Vorschau: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Export-Fehler:', error);
-        
-        // Button zurücksetzen
-        vorschauBtn.innerHTML = originalText;
-        vorschauBtn.disabled = false;
-        
-        alert('Netzwerk-Fehler bei Export-Vorschau');
-    });
+    console.log('✅ Daten gesetzt:', vor30Str, 'bis', heute);
 }
 
-// ✅ MODAL CLOSE BEI ESC
-document.addEventListener('keydown', function(event) {
-    if (event.key === 'Escape') {
-        const exportModal = document.getElementById('exportModal');
-        if (exportModal && exportModal.style.display === 'block') {
-            closeExportModal();
-        }
+function closeExportModal() {
+    console.log('🔒 Modal schließen...');
+    const modal = document.getElementById('exportModal');
+    if (modal) {
+        modal.style.display = 'none';
+        console.log('✅ Modal geschlossen');
     }
-});
+}
 
-// ✅ MODAL CLOSE BEI BACKGROUND-CLICK
-document.addEventListener('click', function(event) {
-    const exportModal = document.getElementById('exportModal');
-    if (event.target === exportModal) {
-        closeExportModal();
+function exportVorschau() {
+    console.log('🔍 VORSCHAU STARTEN...');
+    
+    const von = document.getElementById('vonDatum').value;
+    const bis = document.getElementById('bisDatum').value;
+    
+    console.log('Daten:', von, bis);
+    
+    if (!von || !bis) {
+        alert('❌ Bitte beide Daten eingeben!');
+        return;
     }
-});
-        function openModal(modalId) {
-            const modal = document.getElementById(modalId);
-            if (modal) {
-                modal.style.display = 'flex';
-                
-                if (modalId === 'exportModal') {
-                    const heute = new Date().toISOString().split('T')[0];
-                    const vor30Tagen = new Date();
-                    vor30Tagen.setDate(vor30Tagen.getDate() - 30);
-                    
-                    document.getElementById('exportVonDatum').value = vor30Tagen.toISOString().split('T')[0];
-                    document.getElementById('exportBisDatum').value = heute;
-                    document.getElementById('exportPreview').style.display = 'none';
-                    document.getElementById('exportBtn').disabled = true;
-                }
+    
+    const url = '/gesamt-bericht?von=' + von + '&bis=' + bis + '&format=pdf';
+    console.log('🌐 Öffne URL:', url);
+    
+    window.open(url, '_blank');
+    closeExportModal();
+    alert('✅ Bericht wird geöffnet!');
+}
+
+// ✅ PROJEKT FUNKTIONEN
+function projektErstellen(event) {
+    event.preventDefault();
+    
+    const name = document.getElementById('projektName').value.trim();
+    const kunde = document.getElementById('projektKunde').value.trim();
+    
+    if (!name || !kunde) {
+        alert('❌ Name und Kunde sind erforderlich!');
+        return;
+    }
+    
+    fetch('/projekt/neu', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'name=' + encodeURIComponent(name) + '&kunde=' + encodeURIComponent(kunde)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('✅ Projekt erstellt!');
+            location.reload();
+        } else {
+            alert('❌ ' + data.message);
+        }
+    })
+    .catch(() => alert('❌ Fehler beim Erstellen'));
+}
+
+function projektÖffnen(id) {
+    window.location.href = '/projekt/' + id;
+}
+
+function berichtAnzeigen(id) {
+    window.open('/projekt/' + id + '/bericht', '_blank');
+}
+
+function toggleProjektAuswahl() {
+    console.log('Projekt ausgewählt');
+}
+
+// ✅ MODAL FUNKTIONEN
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'flex';
+        console.log('Modal geöffnet:', modalId);
+    }
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+        console.log('Modal geschlossen:', modalId);
+    }
+}
+
+function showAlert(message, type) {
+    type = type || 'error';
+    const container = document.getElementById('alertContainer');
+    if (container) {
+        container.innerHTML = '<div class="alert alert-' + type + '">' + message + '</div>';
+        setTimeout(() => container.innerHTML = '', 3000);
+    }
+}
+
+// ✅ MANAGEMENT FUNKTIONEN
+function mitarbeiterLöschen(name) {
+    if (confirm('Mitarbeiter "' + name + '" löschen?')) {
+        fetch('/mitarbeiter/löschen', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'name=' + encodeURIComponent(name)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('✅ Mitarbeiter gelöscht!');
+                location.reload();
             }
-        }
+        });
+    }
+}
 
-        function closeModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
-        }
+function kundeLöschen(name) {
+    if (confirm('Kunde "' + name + '" löschen?')) {
+        fetch('/kunde/löschen', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'name=' + encodeURIComponent(name)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('✅ Kunde gelöscht!');
+                location.reload();
+            }
+        });
+    }
+}
 
-        function showAlert(message, type = 'error') {
-            const alertContainer = document.getElementById('alertContainer');
-            alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
-            
-            setTimeout(() => {
-                alertContainer.innerHTML = '';
-            }, 3000);
-        }
-
-        // ✅ Management Functions
-        document.getElementById('mitarbeiterForm').addEventListener('submit', function(e) {
+// ✅ EVENT LISTENERS
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📄 DOM geladen');
+    
+    // Mitarbeiter Form
+    const maForm = document.getElementById('mitarbeiterForm');
+    if (maForm) {
+        maForm.addEventListener('submit', function(e) {
             e.preventDefault();
             const name = document.getElementById('neuerMitarbeiter').value.trim();
             if (!name) return;
             
             fetch('/mitarbeiter/hinzufügen', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: `name=${encodeURIComponent(name)}`
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'name=' + encodeURIComponent(name)
             })
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    showAlert('✅ Mitarbeiter hinzugefügt!', 'success');
+                    alert('✅ Mitarbeiter hinzugefügt!');
                     location.reload();
                 } else {
-                    showAlert('❌ ' + data.message);
+                    alert('❌ ' + data.message);
                 }
             });
         });
-
-        document.getElementById('kundenForm').addEventListener('submit', function(e) {
+    }
+    
+    // Kunden Form
+    const kundenForm = document.getElementById('kundenForm');
+    if (kundenForm) {
+        kundenForm.addEventListener('submit', function(e) {
             e.preventDefault();
             const name = document.getElementById('neuerKunde').value.trim();
             if (!name) return;
             
             fetch('/kunde/hinzufügen', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: `name=${encodeURIComponent(name)}`
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'name=' + encodeURIComponent(name)
             })
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    showAlert('✅ Kunde hinzugefügt!', 'success');
+                    alert('✅ Kunde hinzugefügt!');
                     location.reload();
                 } else {
-                    showAlert('❌ ' + data.message);
+                    alert('❌ ' + data.message);
                 }
             });
         });
-
-        function mitarbeiterLöschen(name) {
-            if (confirm(`Mitarbeiter "${name}" wirklich löschen?`)) {
-                fetch('/mitarbeiter/löschen', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: `name=${encodeURIComponent(name)}`
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        showAlert('✅ Mitarbeiter gelöscht!', 'success');
-                        location.reload();
-                    }
-                });
-            }
-        }
-
-        function kundeLöschen(name) {
-            if (confirm(`Kunde "${name}" wirklich löschen?`)) {
-                fetch('/kunde/löschen', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: `name=${encodeURIComponent(name)}`
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        showAlert('✅ Kunde gelöscht!', 'success');
-                        location.reload();
-                    }
-                });
-            }
-        }
-
-        // Modal außerhalb schließen
-        window.onclick = function(event) {
-            if (event.target.classList.contains('modal')) {
-                event.target.style.display = 'none';
-            }
-        }
-
-        // Page Load
-        document.addEventListener('DOMContentLoaded', function() {
-            updateLöschenButton();
-        });
-
-        // ✅ MODAL SCHLIESSEN FIXES
-        document.addEventListener('DOMContentLoaded', function() {
-            // X-Button klickbar machen
-            document.querySelectorAll('.close').forEach(closeBtn => {
-                closeBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('Close button clicked');
-                    
-                    const modal = this.closest('.modal');
-                    if (modal) {
-                        modal.classList.remove('show');
-                        modal.style.display = 'none';
-                    }
-                });
-            });
-            
-            // Außerhalb Modal klicken = schließen
+    }
+    
+    // ESC-Taste
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
             document.querySelectorAll('.modal').forEach(modal => {
-                modal.addEventListener('click', function(e) {
-                    if (e.target === this) {
-                        this.classList.remove('show');
-                        this.style.display = 'none';
-                    }
-                });
+                modal.style.display = 'none';
             });
-            
-            // ESC-Taste = schließen
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape') {
-                    document.querySelectorAll('.modal.show').forEach(modal => {
-                        modal.classList.remove('show');
-                        modal.style.display = 'none';
-                    });
-                }
-            });
-        });
-
-        function vorschauDrucken() {
-            const vonDatum = document.getElementById('exportVonDatum').value;
-            const bisDatum = document.getElementById('exportBisDatum').value;
-            
-            // Backend-Route für PDF aufrufen
-            const pdfUrl = `/export/vorschau-pdf?von=${vonDatum}&bis=${bisDatum}`;
-            
-            // PDF in neuem Tab öffnen
-            window.open(pdfUrl, '_blank');
         }
-        
-    </script>
+    });
+    
+    // Außerhalb Modal klicken
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.style.display = 'none';
+            }
+        });
+    });
+});
+
+console.log('✅ ALLE FUNKTIONEN DEFINIERT!');
+
+// ✅ TEST: Funktionen im Window verfügbar machen
+window.openExportModal = openExportModal;
+window.closeExportModal = closeExportModal;
+window.exportVorschau = exportVorschau;
+window.projektErstellen = projektErstellen;
+window.projektÖffnen = projektÖffnen;
+window.berichtAnzeigen = berichtAnzeigen;
+window.toggleProjektAuswahl = toggleProjektAuswahl;
+window.openModal = openModal;
+window.closeModal = closeModal;
+window.mitarbeiterLöschen = mitarbeiterLöschen;
+window.kundeLöschen = kundeLöschen;
+
+console.log('🚀 SCRIPT KOMPLETT GELADEN!');
+</script>
 </body>
 </html>
