@@ -7,6 +7,10 @@ import hashlib
 import secrets
 from database import *
 import pytz
+import json
+import os
+from datetime import datetime
+from flask import Flask, render_template, request, session, redirect, url_for, jsonify, render_template_string
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
@@ -704,6 +708,93 @@ def export_vorschau():
             'status': 'error', 
             'message': f'Server-Fehler: {str(e)}'
         })
+@app.route('/gesamt-bericht')
+def gesamt_bericht():
+    """Gesamt-Bericht für Export-Vorschau"""
+    try:
+        # Parameter aus URL holen
+        von_datum = request.args.get('von')
+        bis_datum = request.args.get('bis')
+        format_typ = request.args.get('format', 'pdf')
+        
+        print(f"📊 Gesamt-Bericht angefordert: {von_datum} bis {bis_datum} ({format_typ})")
+        
+        if not von_datum or not bis_datum:
+            return "❌ Von- und Bis-Datum sind erforderlich", 400
+        
+        # Benutzername aus Session
+        benutzer_name = session.get('benutzer_name', 'Unbekannt')
+        
+        # Einfacher HTML-Bericht
+        html_content = f'''
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>RAUSCH - Gesamt-Bericht</title>
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f8f9fa;
+        }}
+        .header {{
+            background: #4a5568;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }}
+        .info {{
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 18px;
+        }}
+        .print-btn {{
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }}
+    </style>
+</head>
+<body>
+    <button class="print-btn" onclick="window.print()">🖨️ Drucken</button>
+    
+    <div class="header">
+        <h1>📊 RAUSCH - Gesamt-Bericht</h1>
+        <h2>{von_datum} bis {bis_datum}</h2>
+        <p>Benutzer: {benutzer_name}</p>
+    </div>
+    
+    <div class="info">
+        <h3>✅ Export-Vorschau funktioniert!</h3>
+        <p>Zeitraum: <strong>{von_datum}</strong> bis <strong>{bis_datum}</strong></p>
+        <p>Format: <strong>{format_typ.upper()}</strong></p>
+        <p>Diese Seite zeigt später Ihre Projektdaten an.</p>
+    </div>
+    
+    <script>
+        console.log('📊 Gesamt-Bericht geladen');
+    </script>
+</body>
+</html>
+        '''
+        
+        return html_content
+        
+    except Exception as e:
+        print(f"❌ Fehler in gesamt_bericht: {e}")
+        return f"❌ Serverfehler: {str(e)}", 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))

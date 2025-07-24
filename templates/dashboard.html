@@ -1060,402 +1060,332 @@
     </div>
 
     <script>
-        // ✅ EXPORT-MODAL FUNKTIONEN
-        function openExportModal() {
-            console.log('🚀 Opening Export Modal...');
-            
-            try {
-                const modal = document.getElementById('exportModal');
-                if (!modal) {
-                    console.error('❌ Export Modal nicht gefunden!');
-                    alert('Export-Modal nicht gefunden. Bitte Seite neu laden.');
-                    return;
-                }
-                
-                modal.style.display = 'flex';
-                modal.classList.add('show');
-                console.log('✅ Modal angezeigt');
-                
-                // Standard-Datumsbereich setzen (letzte 30 Tage)
-                const heute = new Date();
-                const vor30Tagen = new Date();
-                vor30Tagen.setDate(heute.getDate() - 30);
-                
-                const vonDatumField = document.getElementById('vonDatum');
-                const bisDatumField = document.getElementById('bisDatum');
-                
-                if (vonDatumField && bisDatumField) {
-                    vonDatumField.value = vor30Tagen.toISOString().split('T')[0];
-                    bisDatumField.value = heute.toISOString().split('T')[0];
-                    
-                    console.log('✅ Standard-Daten gesetzt:', {
-                        von: vonDatumField.value,
-                        bis: bisDatumField.value
-                    });
-                } else {
-                    console.error('❌ Datum-Felder nicht gefunden!');
-                }
-            } catch (error) {
-                console.error('❌ Fehler beim Öffnen des Modals:', error);
-                alert('Fehler beim Öffnen des Export-Modals: ' + error.message);
-            }
-        }
+// ✅ EXPORT-MODAL FUNKTIONEN
+function openExportModal() {
+    console.log('🚀 Opening Export Modal...');
+    
+    const modal = document.getElementById('exportModal');
+    if (!modal) {
+        alert('Export-Modal nicht gefunden!');
+        return;
+    }
+    
+    modal.style.display = 'flex';
+    console.log('✅ Modal angezeigt');
+    
+    // Standard-Datumsbereich setzen (letzte 30 Tage)
+    const heute = new Date();
+    const vor30Tagen = new Date();
+    vor30Tagen.setDate(heute.getDate() - 30);
+    
+    const vonDatumField = document.getElementById('vonDatum');
+    const bisDatumField = document.getElementById('bisDatum');
+    
+    if (vonDatumField && bisDatumField) {
+        vonDatumField.value = vor30Tagen.toISOString().split('T')[0];
+        bisDatumField.value = heute.toISOString().split('T')[0];
+        console.log('✅ Standard-Daten gesetzt');
+    }
+}
 
-        function closeExportModal() {
-            console.log('🔒 Closing Export Modal...');
-            const modal = document.getElementById('exportModal');
-            if (modal) {
-                modal.style.display = 'none';
-                modal.classList.remove('show');
-                console.log('✅ Modal geschlossen');
-            }
-        }
+function closeExportModal() {
+    console.log('🔒 Closing Export Modal...');
+    const modal = document.getElementById('exportModal');
+    if (modal) {
+        modal.style.display = 'none';
+        console.log('✅ Modal geschlossen');
+    }
+}
 
-        function exportVorschau() {
-            console.log('🔍 Starting Export Preview...');
-            
-            try {
-                const vonDatumField = document.getElementById('vonDatum');
-                const bisDatumField = document.getElementById('bisDatum');
-                const formatRadio = document.querySelector('input[name="format"]:checked');
-                
-                if (!vonDatumField || !bisDatumField) {
-                    throw new Error('Datum-Felder nicht gefunden!');
-                }
-                
-                const vonDatum = vonDatumField.value;
-                const bisDatum = bisDatumField.value;
-                const format = formatRadio ? formatRadio.value : 'pdf';
-                
-                console.log('📊 Export-Daten:', {
-                    von: vonDatum,
-                    bis: bisDatum,
-                    format: format
-                });
-                
-                if (!vonDatum || !bisDatum) {
-                    alert('Bitte wählen Sie Von- und Bis-Datum');
-                    return;
-                }
-                
-                if (new Date(vonDatum) > new Date(bisDatum)) {
-                    alert('Von-Datum darf nicht nach Bis-Datum liegen');
-                    return;
-                }
-                
-                const formData = new FormData();
-                formData.append('von_datum', vonDatum);
-                formData.append('bis_datum', bisDatum);
-                formData.append('format', format);
-                
-                console.log('📤 Sending FormData:');
-                for (let pair of formData.entries()) {
-                    console.log('  ' + pair[0] + ': ' + pair[1]);
-                }
-                
-                const vorschauBtn = event.target;
-                const originalText = vorschauBtn.innerHTML;
-                vorschauBtn.innerHTML = '⏳ Lade...';
-                vorschauBtn.disabled = true;
-                
-                fetch('/export/vorschau', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => {
-                    console.log('📡 Response Status:', response.status);
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('📨 Server Response:', data);
-                    
-                    vorschauBtn.innerHTML = originalText;
-                    vorschauBtn.disabled = false;
-                    
-                    if (data.status === 'success') {
-                        const url = `/gesamt-bericht?von=${vonDatum}&bis=${bisDatum}&format=${format}`;
-                        console.log('🌐 Opening URL:', url);
-                        
-                        const newTab = window.open(url, '_blank');
-                        if (!newTab) {
-                            alert('Popup wurde blockiert. Bitte erlauben Sie Popups für diese Seite.');
-                            return;
-                        }
-                        
-                        closeExportModal();
-                        showAlert(`✅ Export-Vorschau für ${data.anzahl_projekte} Projekt(e) geöffnet`, 'success');
-                    } else {
-                        alert('❌ Fehler bei Vorschau: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('❌ Export-Fehler:', error);
-                    
-                    vorschauBtn.innerHTML = originalText;
-                    vorschauBtn.disabled = false;
-                    
-                    alert('❌ Netzwerk-Fehler bei Export-Vorschau: ' + error.message);
-                });
-                
-            } catch (error) {
-                console.error('❌ Fehler bei Export-Vorschau:', error);
-                alert('❌ Fehler: ' + error.message);
-            }
-        }
+function exportVorschau() {
+    console.log('🔍 Starting Export Preview...');
+    
+    const vonDatumField = document.getElementById('vonDatum');
+    const bisDatumField = document.getElementById('bisDatum');
+    const formatRadio = document.querySelector('input[name="format"]:checked');
+    
+    if (!vonDatumField || !bisDatumField) {
+        alert('Datum-Felder nicht gefunden!');
+        return;
+    }
+    
+    const vonDatum = vonDatumField.value;
+    const bisDatum = bisDatumField.value;
+    const format = formatRadio ? formatRadio.value : 'pdf';
+    
+    if (!vonDatum || !bisDatum) {
+        alert('Bitte wählen Sie Von- und Bis-Datum');
+        return;
+    }
+    
+    if (new Date(vonDatum) > new Date(bisDatum)) {
+        alert('Von-Datum darf nicht nach Bis-Datum liegen');
+        return;
+    }
+    
+    // URL für Gesamt-Bericht erstellen
+    const url = '/gesamt-bericht?von=' + vonDatum + '&bis=' + bisDatum + '&format=' + format;
+    console.log('🌐 Opening URL:', url);
+    
+    // Neuer Tab öffnen
+    const newTab = window.open(url, '_blank');
+    if (!newTab) {
+        alert('Popup wurde blockiert. Bitte erlauben Sie Popups für diese Seite.');
+        return;
+    }
+    
+    // Modal schließen
+    closeExportModal();
+    showAlert('✅ Export-Vorschau geöffnet!', 'success');
+}
 
-        // ✅ ALLE ANDEREN FUNKTIONEN
-        function projektErstellen(event) {
-            event.preventDefault();
-            
-            const name = document.getElementById('projektName').value.trim();
-            const kunde = document.getElementById('projektKunde').value.trim();
-            
-            if (!name) {
-                showAlert('❌ Projektname ist erforderlich!');
-                return;
-            }
-            
-            if (!kunde) {
-                showAlert('❌ Kunde ist erforderlich!');
-                return;
-            }
-            
-            fetch('/projekt/neu', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: `name=${encodeURIComponent(name)}&kunde=${encodeURIComponent(kunde)}`
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    showAlert('✅ Projekt erfolgreich erstellt!', 'success');
-                    document.getElementById('projektName').value = '';
-                    document.getElementById('projektKunde').value = '';
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    showAlert('❌ ' + (data.message || 'Fehler beim Erstellen'));
-                }
-            })
-            .catch(error => {
-                showAlert('❌ Fehler beim Erstellen des Projekts');
-            });
+// ✅ ALLE ANDEREN FUNKTIONEN (unverändert)
+function projektErstellen(event) {
+    event.preventDefault();
+    
+    const name = document.getElementById('projektName').value.trim();
+    const kunde = document.getElementById('projektKunde').value.trim();
+    
+    if (!name) {
+        showAlert('❌ Projektname ist erforderlich!');
+        return;
+    }
+    
+    if (!kunde) {
+        showAlert('❌ Kunde ist erforderlich!');
+        return;
+    }
+    
+    fetch('/projekt/neu', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'name=' + encodeURIComponent(name) + '&kunde=' + encodeURIComponent(kunde)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showAlert('✅ Projekt erfolgreich erstellt!', 'success');
+            document.getElementById('projektName').value = '';
+            document.getElementById('projektKunde').value = '';
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showAlert('❌ ' + (data.message || 'Fehler beim Erstellen'));
         }
+    })
+    .catch(error => {
+        showAlert('❌ Fehler beim Erstellen des Projekts');
+    });
+}
 
-        function projektÖffnen(projektId) {
-            window.location.href = `/projekt/${projektId}`;
+function projektÖffnen(projektId) {
+    window.location.href = '/projekt/' + projektId;
+}
+
+function berichtAnzeigen(projektId) {
+    window.open('/projekt/' + projektId + '/bericht', '_blank');
+}
+
+function toggleProjektAuswahl(projektId, status) {
+    updateLöschenButton();
+}
+
+function updateLöschenButton() {
+    const checkedBoxes = document.querySelectorAll('.projekt-checkbox:checked');
+    const count = checkedBoxes.length;
+    
+    const stickyControls = document.getElementById('stickyDeleteControls');
+    const stickyBtn = document.getElementById('stickyLöschenBtn');
+    const selectedCount = document.getElementById('selectedCount');
+    const selectionBadge = document.getElementById('selectionBadge');
+    
+    if (count > 0) {
+        stickyControls.classList.remove('hidden');
+        stickyBtn.disabled = false;
+        selectedCount.textContent = count;
+        selectionBadge.textContent = count;
+        selectionBadge.style.display = 'flex';
+    } else {
+        stickyControls.classList.add('hidden');
+        stickyBtn.disabled = true;
+        selectionBadge.style.display = 'none';
+    }
+}
+
+function projekte_löschen() {
+    const checkedBoxes = document.querySelectorAll('.projekt-checkbox:checked');
+    const projektIds = [];
+    
+    checkedBoxes.forEach(checkbox => {
+        const projektId = checkbox.id.replace('projekt_', '');
+        if (projektId && !isNaN(projektId)) {
+            projektIds.push(parseInt(projektId));
         }
-
-        function berichtAnzeigen(projektId) {
-            window.open(`/projekt/${projektId}/bericht`, '_blank');
-        }
-
-        function toggleProjektAuswahl(projektId, status) {
-            updateLöschenButton();
-        }
-
-        function updateLöschenButton() {
-            const checkedBoxes = document.querySelectorAll('.projekt-checkbox:checked');
-            const count = checkedBoxes.length;
-            
-            const stickyControls = document.getElementById('stickyDeleteControls');
-            const stickyBtn = document.getElementById('stickyLöschenBtn');
-            const selectedCount = document.getElementById('selectedCount');
-            const selectionBadge = document.getElementById('selectionBadge');
-            
-            if (count > 0) {
-                stickyControls.classList.remove('hidden');
-                stickyBtn.disabled = false;
-                selectedCount.textContent = count;
-                selectionBadge.textContent = count;
-                selectionBadge.style.display = 'flex';
+    });
+    
+    if (projektIds.length === 0) {
+        showAlert('❌ Keine Projekte ausgewählt!');
+        return;
+    }
+    
+    if (confirm('⚠️ ' + projektIds.length + ' Projekt(e) wirklich löschen?')) {
+        fetch('/projekte/löschen', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({projekt_ids: projektIds})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showAlert('✅ Projekte erfolgreich gelöscht!', 'success');
+                setTimeout(() => location.reload(), 1000);
             } else {
-                stickyControls.classList.add('hidden');
-                stickyBtn.disabled = true;
-                selectionBadge.style.display = 'none';
+                showAlert('❌ Fehler: ' + (data.message || 'Unbekannter Fehler'));
             }
-        }
+        })
+        .catch(error => {
+            showAlert('❌ Netzwerk-Fehler beim Löschen!');
+        });
+    }
+}
 
-        function projekte_löschen() {
-            const checkedBoxes = document.querySelectorAll('.projekt-checkbox:checked');
-            const projektIds = [];
-            
-            checkedBoxes.forEach(checkbox => {
-                const projektId = checkbox.id.replace('projekt_', '');
-                if (projektId && !isNaN(projektId)) {
-                    projektIds.push(parseInt(projektId));
-                }
-            });
-            
-            if (projektIds.length === 0) {
-                showAlert('❌ Keine Projekte ausgewählt!');
-                return;
-            }
-            
-            if (confirm(`⚠️ ${projektIds.length} Projekt(e) wirklich löschen?`)) {
-                fetch('/projekte/löschen', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({projekt_ids: projektIds})
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        showAlert('✅ Projekte erfolgreich gelöscht!', 'success');
-                        setTimeout(() => location.reload(), 1000);
-                    } else {
-                        showAlert('❌ Fehler: ' + (data.message || 'Unbekannter Fehler'));
-                    }
-                })
-                .catch(error => {
-                    showAlert('❌ Netzwerk-Fehler beim Löschen!');
-                });
-            }
-        }
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'flex';
+    }
+}
 
-        function openModal(modalId) {
-            const modal = document.getElementById(modalId);
-            if (modal) {
-                modal.style.display = 'flex';
-                modal.classList.add('show');
-            }
-        }
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
 
-        function closeModal(modalId) {
-            const modal = document.getElementById(modalId);
-            if (modal) {
+function showAlert(message, type) {
+    type = type || 'error';
+    const alertContainer = document.getElementById('alertContainer');
+    alertContainer.innerHTML = '<div class="alert alert-' + type + '">' + message + '</div>';
+    
+    setTimeout(() => {
+        alertContainer.innerHTML = '';
+    }, 3000);
+}
+
+// Management Functions
+document.getElementById('mitarbeiterForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const name = document.getElementById('neuerMitarbeiter').value.trim();
+    if (!name) return;
+    
+    fetch('/mitarbeiter/hinzufügen', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'name=' + encodeURIComponent(name)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showAlert('✅ Mitarbeiter hinzugefügt!', 'success');
+            location.reload();
+        } else {
+            showAlert('❌ ' + data.message);
+        }
+    });
+});
+
+document.getElementById('kundenForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const name = document.getElementById('neuerKunde').value.trim();
+    if (!name) return;
+    
+    fetch('/kunde/hinzufügen', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'name=' + encodeURIComponent(name)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showAlert('✅ Kunde hinzugefügt!', 'success');
+            location.reload();
+        } else {
+            showAlert('❌ ' + data.message);
+        }
+    });
+});
+
+function mitarbeiterLöschen(name) {
+    if (confirm('Mitarbeiter "' + name + '" wirklich löschen?')) {
+        fetch('/mitarbeiter/löschen', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'name=' + encodeURIComponent(name)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showAlert('✅ Mitarbeiter gelöscht!', 'success');
+                location.reload();
+            }
+        });
+    }
+}
+
+function kundeLöschen(name) {
+    if (confirm('Kunde "' + name + '" wirklich löschen?')) {
+        fetch('/kunde/löschen', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'name=' + encodeURIComponent(name)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showAlert('✅ Kunde gelöscht!', 'success');
+                location.reload();
+            }
+        });
+    }
+}
+
+// Event Listeners
+document.addEventListener('DOMContentLoaded', function() {
+    updateLöschenButton();
+    
+    // ESC-Taste = Modal schließen
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const openModals = document.querySelectorAll('.modal[style*="flex"]');
+            openModals.forEach(modal => {
                 modal.style.display = 'none';
-                modal.classList.remove('show');
+            });
+        }
+    });
+    
+    // Außerhalb Modal klicken = schließen
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.style.display = 'none';
             }
-        }
-
-        function showAlert(message, type = 'error') {
-            const alertContainer = document.getElementById('alertContainer');
-            alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
-            
-            setTimeout(() => {
-                alertContainer.innerHTML = '';
-            }, 3000);
-        }
-
-        // Management Functions
-        document.getElementById('mitarbeiterForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const name = document.getElementById('neuerMitarbeiter').value.trim();
-            if (!name) return;
-            
-            fetch('/mitarbeiter/hinzufügen', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: `name=${encodeURIComponent(name)}`
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    showAlert('✅ Mitarbeiter hinzugefügt!', 'success');
-                    location.reload();
-                } else {
-                    showAlert('❌ ' + data.message);
-                }
-            });
         });
+    });
+});
 
-        document.getElementById('kundenForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const name = document.getElementById('neuerKunde').value.trim();
-            if (!name) return;
-            
-            fetch('/kunde/hinzufügen', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: `name=${encodeURIComponent(name)}`
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    showAlert('✅ Kunde hinzugefügt!', 'success');
-                    location.reload();
-                } else {
-                    showAlert('❌ ' + data.message);
-                }
-            });
-        });
-
-        function mitarbeiterLöschen(name) {
-            if (confirm(`Mitarbeiter "${name}" wirklich löschen?`)) {
-                fetch('/mitarbeiter/löschen', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: `name=${encodeURIComponent(name)}`
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        showAlert('✅ Mitarbeiter gelöscht!', 'success');
-                        location.reload();
-                    }
-                });
-            }
-        }
-
-        function kundeLöschen(name) {
-            if (confirm(`Kunde "${name}" wirklich löschen?`)) {
-                fetch('/kunde/löschen', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: `name=${encodeURIComponent(name)}`
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        showAlert('✅ Kunde gelöscht!', 'success');
-                        location.reload();
-                    }
-                });
-            }
-        }
-
-        // Event Listeners
-        document.addEventListener('DOMContentLoaded', function() {
-            updateLöschenButton();
-            
-            // ESC-Taste = Modal schließen
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape') {
-                    const openModals = document.querySelectorAll('.modal.show');
-                    openModals.forEach(modal => {
-                        modal.classList.remove('show');
-                        modal.style.display = 'none';
-                    });
-                }
-            });
-            
-            // Außerhalb Modal klicken = schließen
-            document.querySelectorAll('.modal').forEach(modal => {
-                modal.addEventListener('click', function(e) {
-                    if (e.target === this) {
-                        this.classList.remove('show');
-                        this.style.display = 'none';
-                    }
-                });
-            });
-        });
-
-        console.log('✅ Dashboard JavaScript geladen');
-    </script>
+console.log('✅ Dashboard JavaScript geladen');
+</script>
 </body>
 </html>
