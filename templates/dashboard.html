@@ -888,10 +888,10 @@
             <div class="projekte-grid">
                 {% for projekt in projekte %}
                 <div class="projekt-card status-{{ projekt.status }}" 
-     data-projekt-id="{{ projekt.id }}" 
-     data-projekt-status="{{ projekt.status }}"
-     onclick="projektÖffnen({{ projekt.id }})">  
-    <div class="projekt-header">
+                     data-projekt-id="{{ projekt.id }}" 
+                     data-projekt-status="{{ projekt.status }}"
+                     onclick="projektoffnen({{ projekt.id }})">
+                    
                     <div class="projekt-header">
                         <div>
                             <div class="projekt-name {% if projekt.status == 'beendet' %}beendet-projekt{% endif %}">
