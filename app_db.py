@@ -710,79 +710,56 @@ def export_vorschau():
         })
 @app.route('/gesamt-bericht')
 def gesamt_bericht():
-    """Gesamt-Bericht mit PostgreSQL Unterstützung"""
+    """Gesamt-Bericht mit korrekten Railway Tabellen-Namen"""
     try:
         von_datum_str = request.args.get('von', '')
         bis_datum_str = request.args.get('bis', '')
-        format_typ = request.args.get('format', 'pdf')
         
         print(f"📊 Gesamt-Bericht: {von_datum_str} bis {bis_datum_str}")
         
-        # Datums-Parsing
-        if von_datum_str and bis_datum_str:
-            try:
-                von_datum = datetime.strptime(von_datum_str, '%Y-%m-%d').date()
-                bis_datum = datetime.strptime(bis_datum_str, '%Y-%m-%d').date()
-            except:
-                von_datum = None
-                bis_datum = None
-        else:
-            von_datum = None
-            bis_datum = None
-        
         conn = get_db_connection()
-        cur = conn.cursor()  # ✅ CURSOR ERSTELLEN!
+        cur = conn.cursor()
         
-        # BEENDETE PROJEKTE HOLEN
-        if von_datum and bis_datum:
-            projekte_query = '''
-                SELECT DISTINCT p.id, p.name, p.kunde, p.status, p.erstellt_am
-                FROM projekte p
-                WHERE p.status = 'beendet'
-                ORDER BY p.erstellt_am DESC
-            '''
-        else:
-            projekte_query = '''
-                SELECT DISTINCT p.id, p.name, p.kunde, p.status, p.erstellt_am
-                FROM projekte p
-                WHERE p.status = 'beendet'
-                ORDER BY p.erstellt_am DESC
-            '''
+        # ✅ RICHTIGE TABELLEN: projekte + sitzungen
+        projekte_query = '''
+            SELECT DISTINCT p.id, p.name, p.kunde, p.status, p.erstellt_am
+            FROM projekte p
+            WHERE p.status = 'beendet'
+            ORDER BY p.erstellt_am DESC
+        '''
         
-        cur.execute(projekte_query)  # ✅ CURSOR VERWENDEN
+        cur.execute(projekte_query)
         projekte_raw = cur.fetchall()
-        
-        # SPALTEN-NAMEN HOLEN
         columns = [desc[0] for desc in cur.description]
         projekte_dict = [dict(zip(columns, row)) for row in projekte_raw]
         
-        # PROJEKTE MIT TEILBEREICHEN AUFBAUEN
+        # PROJEKTE MIT SITZUNGEN AUFBAUEN
         projekte = []
         
         for projekt in projekte_dict:
             projekt_id = projekt['id']
             
-            # Aktivitäten für dieses Projekt holen
-            if von_datum and bis_datum:
-                aktivitaeten_query = '''
+            # ✅ SITZUNGEN statt aktivitaeten verwenden
+            if von_datum_str and bis_datum_str:
+                sitzungen_query = '''
                     SELECT teilbereich, SUM(CAST(dauer AS FLOAT)) as stunden
-                    FROM aktivitaeten 
+                    FROM sitzungen 
                     WHERE projekt_id = %s AND datum BETWEEN %s AND %s
                     GROUP BY teilbereich
                 '''
-                cur.execute(aktivitaeten_query, (projekt_id, von_datum_str, bis_datum_str))
+                cur.execute(sitzungen_query, (projekt_id, von_datum_str, bis_datum_str))
             else:
-                aktivitaeten_query = '''
+                sitzungen_query = '''
                     SELECT teilbereich, SUM(CAST(dauer AS FLOAT)) as stunden
-                    FROM aktivitaeten 
+                    FROM sitzungen 
                     WHERE projekt_id = %s
                     GROUP BY teilbereich
                 '''
-                cur.execute(aktivitaeten_query, (projekt_id,))
+                cur.execute(sitzungen_query, (projekt_id,))
             
-            aktivitaeten_raw = cur.fetchall()
-            aktivitaeten_columns = [desc[0] for desc in cur.description]
-            aktivitaeten = [dict(zip(aktivitaeten_columns, row)) for row in aktivitaeten_raw]
+            sitzungen_raw = cur.fetchall()
+            sitzungen_columns = [desc[0] for desc in cur.description]
+            sitzungen = [dict(zip(sitzungen_columns, row)) for row in sitzungen_raw]
             
             # Teilbereiche initialisieren
             teilbereiche = {
@@ -791,10 +768,10 @@ def gesamt_bericht():
                 'aufmass': {'gesamt_minuten': 0}
             }
             
-            # Aktivitäten zu Teilbereichen zuordnen
-            for aktivitaet in aktivitaeten:
-                teilbereich = aktivitaet['teilbereich'].lower()
-                stunden = float(aktivitaet['stunden'] or 0)
+            # Sitzungen zu Teilbereichen zuordnen
+            for sitzung in sitzungen:
+                teilbereich = sitzung['teilbereich'].lower()
+                stunden = float(sitzung['stunden'] or 0)
                 minuten = int(stunden * 60)
                 
                 if teilbereich in teilbereiche:
@@ -811,7 +788,7 @@ def gesamt_bericht():
             
             projekte.append(projekt_final)
         
-        cur.close()  # ✅ CURSOR SCHLIESSEN
+        cur.close()
         conn.close()
         
         # DATUM FORMATIERUNG
@@ -835,7 +812,7 @@ def gesamt_bericht():
         
         print(f"✅ {len(projekte)} Projekte gefunden, {alle_zeit_minuten} Minuten gesamt")
         
-        # HTML TEMPLATE (Ihr exaktes Design)
+        # IHR EXAKTES HTML TEMPLATE
         html_content = f'''<!DOCTYPE html>
 <html lang="de">
 <head>
@@ -1200,7 +1177,6 @@ def gesamt_bericht():
         import traceback
         traceback.print_exc()
         return f"<h1>Fehler: {str(e)}</h1><pre>{traceback.format_exc()}</pre>", 500
-
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port, debug=False)
