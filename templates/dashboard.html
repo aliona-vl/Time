@@ -961,7 +961,7 @@
             {% endif %}
         </div>
 
-        <!-- ✅ MODALS (сохраняем, но компактные) -->
+        <!-- ✅ MODALS  -->
         <!-- Export Modal -->
         <div id="exportModal" class="modal">
             <div class="modal-content">
@@ -1122,52 +1122,17 @@ function closeExportModal() {
 }
 
 function exportVorschau() {
-    console.log('🔍 VORSCHAU STARTEN...');
+    const vonDatum = document.getElementById('von_datum').value;
+    const bisDatum = document.getElementById('bis_datum').value;
     
-    // ✅ ALLE MÖGLICHEN ID-NAMEN PROBIEREN
-    const vonField = document.getElementById('vonDatum') || 
-                     document.getElementById('exportVonDatum') || 
-                     document.querySelector('input[name="von_datum"]');
-                     
-    const bisField = document.getElementById('bisDatum') || 
-                     document.getElementById('exportBisDatum') || 
-                     document.querySelector('input[name="bis_datum"]');
-    
-    console.log('🔍 vonField:', vonField);
-    console.log('🔍 bisField:', bisField);
-    
-    if (!vonField || !bisField) {
-        console.error('❌ FELDER NICHT GEFUNDEN!');
-        
-        // DEBUG: Alle Input-Felder anzeigen
-        const allInputs = document.querySelectorAll('#exportModal input');
-        console.log('🔍 Alle Inputs im Modal:', allInputs);
-        allInputs.forEach((input, index) => {
-            console.log(`Input ${index}:`, input.id, input.name, input.type);
-        });
-        
-        alert('❌ FEHLER: Datum-Felder nicht gefunden! Schauen Sie in die Konsole.');
+    if (!vonDatum || !bisDatum) {
+        alert('⚠️ Bitte beide Daten auswählen!');
         return;
     }
     
-    const von = vonField.value;
-    const bis = bisField.value;
-    
-    console.log('📅 Daten:', von, bis);
-    
-    if (!von || !bis) {
-        alert('❌ Bitte beide Daten eingeben!');
-        return;
-    }
-    
-    const url = '/gesamt-bericht?von=' + von + '&bis=' + bis + '&format=pdf';
-    console.log('🌐 Öffne URL:', url);
-    
-    window.open(url, '_blank');
-    closeExportModal();
-    alert('✅ Bericht wird geöffnet!');
+    // Im gleichen Tab öffnen
+    window.location.href = `/export/vollbericht?von=${vonDatum}&bis=${bisDatum}`;
 }
-
 // ✅ PROJEKT FUNKTIONEN
 function projektErstellen(event) {
     event.preventDefault();
