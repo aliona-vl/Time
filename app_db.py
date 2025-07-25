@@ -925,8 +925,507 @@ def projekt_bericht(projekt_id):
         import traceback
         traceback.print_exc()
         return f"<h1>❌ Fehler beim Laden des Berichts</h1><p>{str(e)}</p><pre>{traceback.format_exc()}</pre>", 500
+ #Gesamt-Bericht mit sicherer ID-Extraktion   
+@app.route('/gesamt-bericht')
+def gesamt_bericht():
+    """Gesamt-Bericht mit sicherer ID-Extraktion"""
+    try:
+        von_datum_str = request.args.get('von', '')
+        bis_datum_str = request.args.get('bis', '')
+        
+        print(f"📊 Gesamt-Bericht: {von_datum_str} bis {bis_datum_str}")
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # ✅ PROJEKTE holen
+        projekte_query = '''
+            SELECT DISTINCT p.id, p.name, p.kunde, p.status, p.erstellt_am
+            FROM projekte p
+            WHERE p.status = 'beendet'
+            ORDER BY p.erstellt_am DESC
+        '''
+        
+        cur.execute(projekte_query)
+        projekte_raw = cur.fetchall()
+        columns = [desc[0] for desc in cur.description]
+        projekte_dict = [dict(zip(columns, row)) for row in projekte_raw]
+        
+        print(f"🔍 Columns: {columns}")
+        print(f"🔍 Gefundene Projekte: {len(projekte_dict)}")
+        
+        # PROJEKTE MIT SITZUNGEN AUFBAUEN
+        projekte = []
+        
+        for projekt in projekte_dict:
+            # ✅ SICHERE ID-EXTRAKTION
+            print(f"🔍 DEBUG projekt dict: {projekt}")
+            
+            # ID sicher extrahieren
+            if 'id' in projekt and projekt['id'] != 'id':
+                projekt_id = projekt['id']
+            elif columns and len(projekt.values()) > 0:
+                # Erste Spalte sollte ID sein
+                projekt_id = list(projekt.values())[0]
+            else:
+                print(f"❌ Kann ID nicht finden für: {projekt}")
+                continue
 
+            # Sicherstellen dass es eine Zahl ist
+            try:
+                projekt_id = int(projekt_id)
+                print(f"✅ Verwende projekt_id: {projekt_id}")
+            except (ValueError, TypeError):
+                print(f"❌ Ungültige projekt_id: {projekt_id}, überspringe Projekt")
+                continue
+            
+            # ✅ SITZUNGEN holen
+            if von_datum_str and bis_datum_str:
+                sitzungen_query = '''
+                    SELECT teilbereich, 
+                           SUM(EXTRACT(EPOCH FROM (end_zeit - start_zeit))/3600) as stunden_gesamt
+                    FROM sitzungen 
+                    WHERE projekt_id = %s 
+                      AND DATE(start_zeit) BETWEEN %s AND %s
+                    GROUP BY teilbereich
+                '''
+                cur.execute(sitzungen_query, (projekt_id, von_datum_str, bis_datum_str))
+            else:
+                sitzungen_query = '''
+                    SELECT teilbereich, 
+                           SUM(EXTRACT(EPOCH FROM (end_zeit - start_zeit))/3600) as stunden_gesamt
+                    FROM sitzungen 
+                    WHERE projekt_id = %s
+                    GROUP BY teilbereich
+                '''
+                cur.execute(sitzungen_query, (projekt_id,))
+            
+            sitzungen_raw = cur.fetchall()
+            sitzungen_columns = [desc[0] for desc in cur.description]
+            sitzungen = [dict(zip(sitzungen_columns, row)) for row in sitzungen_raw]
+            
+            print(f"🔍 Projekt {projekt_id}: {len(sitzungen)} Teilbereiche gefunden")
+            
+            # Teilbereiche initialisieren
+            teilbereiche = {
+                'besprechung': {'gesamt_minuten': 0},
+                'zeichnung': {'gesamt_minuten': 0},
+                'aufmass': {'gesamt_minuten': 0}
+            }
+            
+            # Sitzungen zu Teilbereichen zuordnen
+            for sitzung in sitzungen:
+                teilbereich = sitzung['teilbereich'].lower().strip()
+                stunden = float(sitzung['stunden_gesamt'] or 0)
+                minuten = int(stunden * 60)
+                
+                print(f"🔍 Teilbereich: {teilbereich}, Stunden: {stunden}, Minuten: {minuten}")
+                
+                if teilbereich in teilbereiche:
+                    teilbereiche[teilbereich]['gesamt_minuten'] = minuten
+                elif teilbereich == 'aufmaß':
+                    teilbereiche['aufmass']['gesamt_minuten'] = minuten
+            
+            projekt_final = {
+                'id': projekt_id,
+                'name': projekt.get('name', 'Unbekannt'),
+                'kunde': projekt.get('kunde', 'Unbekannt'),
+                'status': projekt.get('status', 'unbekannt'),
+                'erstellt_am': projekt.get('erstellt_am', ''),
+                'teilbereiche': teilbereiche
+            }
+            
+            projekte.append(projekt_final)
+        
+        cur.close()
+        conn.close()
+        
+        # DATUM FORMATIERUNG
+        if von_datum_str and bis_datum_str:
+            try:
+                von_formatted = datetime.strptime(von_datum_str, '%Y-%m-%d').strftime('%d.%m.%Y')
+                bis_formatted = datetime.strptime(bis_datum_str, '%Y-%m-%d').strftime('%d.%m.%Y')
+                zeitraum_text = f"{von_formatted} bis {bis_formatted}"
+            except:
+                zeitraum_text = f"{von_datum_str} bis {bis_datum_str}"
+        else:
+            zeitraum_text = "Alle beendeten Projekte"
+        
+        # GESAMT-ZEIT BERECHNEN
+        alle_zeit_minuten = 0
+        for projekt in projekte:
+            projekt_zeit = (projekt['teilbereiche']['besprechung']['gesamt_minuten'] + 
+                          projekt['teilbereiche']['zeichnung']['gesamt_minuten'] + 
+                          projekt['teilbereiche']['aufmass']['gesamt_minuten'])
+            alle_zeit_minuten += projekt_zeit
+        
+        print(f"✅ {len(projekte)} Projekte gefunden, {alle_zeit_minuten} Minuten gesamt")
+        
+        # IHR EXAKTES HTML TEMPLATE
+        html_content = f'''<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAUSCH - Gesamt-Bericht {zeitraum_text}</title>
+    <style>
+        :root {{
+            --primary-dark: #4a5568;
+            --primary-blue: #3498db;
+            --background-light: #f8f9fa;
+            --text-dark: #2c3e50;
+            --text-light: #6c757d;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --white: #ffffff;
+            --border-color: #dee2e6;
+            --gray: #6c757d;
+        }}
 
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: white;
+            padding: 15px;
+            font-size: 12px;
+            line-height: 1.4;
+        }}
+
+        .report-container {{
+            max-width: 100%;
+            margin: 0 auto;
+            background: white;
+        }}
+
+        .report-header {{
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 3px solid var(--primary-blue);
+        }}
+
+        .report-title {{
+            font-size: 1.3em;
+            font-weight: bold;
+            color: var(--primary-dark);
+            margin-bottom: 6px;
+            line-height: 1.2;
+        }}
+
+        .report-subtitle {{
+            font-size: 0.9em;
+            color: var(--text-light);
+        }}
+
+        .report-section {{
+            margin-bottom: 20px;
+            background: var(--background-light);
+            border-radius: 8px;
+            padding: 12px;
+            border-left: 3px solid var(--primary-blue);
+        }}
+
+        .section-title {{
+            font-size: 1em;
+            font-weight: bold;
+            color: var(--primary-dark);
+            margin-bottom: 12px;
+        }}
+
+        .projekt-item {{
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 10px;
+            page-break-inside: avoid;
+        }}
+
+        .projekt-header {{
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid var(--primary-blue);
+        }}
+
+        .projekt-name {{
+            font-size: 1em;
+            font-weight: bold;
+            color: var(--primary-dark);
+            line-height: 1.2;
+        }}
+
+        .projekt-kunde {{
+            color: var(--text-light);
+            font-style: italic;
+            font-size: 0.85em;
+        }}
+
+        .projekt-gesamt {{
+            background: var(--primary-blue);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 0.8em;
+            align-self: flex-start;
+            margin-top: 4px;
+        }}
+
+        .teilbereiche-grid {{
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 6px;
+            margin-top: 8px;
+        }}
+
+        .teilbereich-item {{
+            background: var(--background-light);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+
+        .teilbereich-name {{
+            font-weight: bold;
+            font-size: 0.8em;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }}
+
+        .teilbereich-zeit {{
+            color: var(--primary-blue);
+            font-weight: bold;
+            font-size: 0.8em;
+        }}
+
+        .action-buttons {{
+            text-align: center;
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 2px solid var(--border-color);
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }}
+
+        .btn {{
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            color: white;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }}
+
+        .btn:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }}
+
+        .btn-print {{
+            background: var(--success);
+        }}
+
+        .btn-back {{
+            background: var(--gray);
+        }}
+
+        @media (min-width: 768px) {{
+            body {{ padding: 20px; font-size: 14px; }}
+            .report-container {{ max-width: 900px; }}
+            .report-title {{ font-size: 1.8em; }}
+            .report-subtitle {{ font-size: 1em; }}
+            .projekt-header {{ flex-direction: row; justify-content: space-between; align-items: center; }}
+            .projekt-gesamt {{ margin-top: 0; }}
+            .teilbereiche-grid {{ grid-template-columns: repeat(3, 1fr); gap: 10px; }}
+            .btn {{ padding: 15px 30px; font-size: 16px; }}
+        }}
+
+        @media (max-width: 768px) {{
+            .action-buttons {{ flex-direction: column; align-items: center; gap: 10px; }}
+            .btn {{ width: 100%; max-width: 250px; }}
+        }}
+
+        @media print {{
+            .action-buttons {{ display: none !important; }}
+            body {{ background: white !important; padding: 5px !important; font-size: 9px !important; }}
+            @page {{ margin: 0.5cm; size: A4; }}
+            .report-container {{ transform: scale(0.95); transform-origin: top left; width: 105%; }}
+            .projekt-item {{ page-break-inside: avoid; break-inside: avoid; margin-bottom: 8px !important; }}
+            .report-section {{ page-break-inside: avoid; break-inside: avoid; margin-bottom: 12px !important; }}
+            .report-title {{ font-size: 1.4em !important; color: black !important; }}
+            .report-subtitle {{ font-size: 0.8em !important; }}
+            .section-title {{ font-size: 0.9em !important; color: black !important; }}
+            .projekt-name {{ font-size: 0.9em !important; color: black !important; }}
+            .teilbereiche-grid {{ grid-template-columns: repeat(3, 1fr) !important; gap: 6px !important; }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="report-container">
+        <div class="report-header">
+            <div class="report-title">📊 Gesamt-Bericht RAUSCH</div>
+            <div class="report-subtitle">Zeitraum: {zeitraum_text}</div>
+        </div>
+
+        <div class="summary-bar" style="background: var(--primary-blue); color: white; padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 20px; font-weight: bold; font-size: 14px;">
+            📊 {len(projekte)} Projekt(e) | ⏱️ '''
+        
+        # ZEIT FORMATIERUNG
+        if alle_zeit_minuten < 60:
+            html_content += f"{alle_zeit_minuten}min"
+        else:
+            stunden = alle_zeit_minuten // 60
+            minuten = alle_zeit_minuten % 60
+            html_content += f"{stunden}h {minuten}min"
+        
+        html_content += f'''
+        </div>
+
+        <div class="report-section">
+            <div class="section-title">🏗️ Beendete Projekte ({len(projekte)})</div>
+            '''
+        
+        if projekte:
+            for projekt in projekte:
+                # GESAMT-ZEIT FÜR DIESES PROJEKT
+                gesamt_minuten = (projekt['teilbereiche']['besprechung']['gesamt_minuten'] + 
+                                projekt['teilbereiche']['zeichnung']['gesamt_minuten'] + 
+                                projekt['teilbereiche']['aufmass']['gesamt_minuten'])
+                
+                if gesamt_minuten < 60:
+                    gesamt_zeit_text = f"{gesamt_minuten}min"
+                else:
+                    stunden = gesamt_minuten // 60
+                    minuten = gesamt_minuten % 60
+                    gesamt_zeit_text = f"{stunden}h {minuten}min"
+                
+                html_content += f'''
+                <div class="projekt-item">
+                    <div class="projekt-header">
+                        <div>
+                            <div class="projekt-name">{projekt['name']}</div>
+                            <div class="projekt-kunde">👤 {projekt['kunde']}</div>
+                        </div>
+                        <div class="projekt-gesamt">{gesamt_zeit_text}</div>
+                    </div>
+                    
+                    <div class="teilbereiche-grid">
+                        <div class="teilbereich-item">
+                            <div class="teilbereich-name">💬 Besprechung</div>
+                            <div class="teilbereich-zeit">'''
+                
+                # BESPRECHUNG ZEIT
+                besp_min = projekt['teilbereiche']['besprechung']['gesamt_minuten']
+                if besp_min < 60:
+                    html_content += f"{besp_min}min"
+                else:
+                    html_content += f"{besp_min // 60}h {besp_min % 60}min"
+                
+                html_content += '''</div>
+                        </div>
+                        <div class="teilbereich-item">
+                            <div class="teilbereich-name">📐 Zeichnung</div>
+                            <div class="teilbereich-zeit">'''
+                
+                # ZEICHNUNG ZEIT
+                zeich_min = projekt['teilbereiche']['zeichnung']['gesamt_minuten']
+                if zeich_min < 60:
+                    html_content += f"{zeich_min}min"
+                else:
+                    html_content += f"{zeich_min // 60}h {zeich_min % 60}min"
+                
+                html_content += '''</div>
+                        </div>
+                        <div class="teilbereich-item">
+                            <div class="teilbereich-name">📏 Aufmaß</div>
+                            <div class="teilbereich-zeit">'''
+                
+                # AUFMASS ZEIT
+                aufm_min = projekt['teilbereiche']['aufmass']['gesamt_minuten']
+                if aufm_min < 60:
+                    html_content += f"{aufm_min}min"
+                else:
+                    html_content += f"{aufm_min // 60}h {aufm_min % 60}min"
+                
+                html_content += '''</div>
+                        </div>
+                    </div>
+                </div>'''
+        else:
+            html_content += '''
+                <div style="text-align: center; padding: 20px; color: var(--text-light); font-style: italic;">
+                    📭 Keine beendeten Projekte im gewählten Zeitraum gefunden.
+                </div>'''
+        
+        html_content += '''
+        </div>
+
+        <div class="action-buttons">
+            <button onclick="window.print()" class="btn btn-print">
+                🖨️ Drucken
+            </button>
+            <button onclick="goBack()" class="btn btn-back">
+                ← Zurück
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function goBack() {
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.href = '/dashboard';
+            }
+        }
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                goBack();
+            }
+        });
+
+        if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches) {
+            document.addEventListener('DOMContentLoaded', function() {
+                const meta = document.createElement('meta');
+                meta.name = 'viewport';
+                meta.content = 'width=device-width, initial-scale=0.9';
+                document.getElementsByTagName('head')[0].appendChild(meta);
+            });
+        }
+    </script>
+</body>
+</html>'''
+        
+        return html_content
+        
+    except Exception as e:
+        print(f"❌ Fehler in gesamt_bericht: {e}")
+        import traceback
+        traceback.print_exc()
+        return f"<h1>Fehler: {str(e)}</h1><pre>{traceback.format_exc()}</pre>", 500
  #Projekte  löschen   
 @app.route('/projekte/bulk-delete', methods=['POST'])
 @login_required
