@@ -1110,9 +1110,7 @@ function openExportModal() {
     if (bisField) bisField.value = heute;
     
     console.log('✅ Daten gesetzt:', vor30Str, 'bis', heute);
-    // ✅ FEHLENDE FUNKTIONEN INS WINDOW-OBJEKT
-window.closeExportModal = closeExportModal;
-}
+    
 
 function exportVorschau() {
     console.log('📊 Export Vorschau gestartet...');
@@ -1168,8 +1166,11 @@ function exportVorschau() {
     const url = `/export/vollbericht?von=${vonDatum}&bis=${bisDatum}`;
     console.log(`🚀 Öffne Vollbericht: ${url}`);
     
-    // Modal schließen
-    closeExportModal();
+    // ✅ MODAL DIREKT SCHLIESSEN (ohne Funktionsaufruf)
+    const modal = document.getElementById('exportModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
     
     // Im gleichen Tab öffnen
     window.location.href = url;
@@ -1463,6 +1464,7 @@ window.openModal = openModal;
 window.closeModal = closeModal;
 window.mitarbeiterLöschen = mitarbeiterLöschen;
 window.kundeLöschen = kundeLöschen;
+window.closeExportModal = closeExportModal;
 
 console.log('🚀 SCRIPT KOMPLETT GELADEN!');
 </script>
