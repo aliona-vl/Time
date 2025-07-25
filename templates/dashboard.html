@@ -1102,81 +1102,48 @@ function openExportModal() {
     vor30.setDate(vor30.getDate() - 30);
     const vor30Str = vor30.toISOString().split('T')[0];
     
-    // ✅ KORREKTE IDs VERWENDEN
-    const vonField = document.getElementById('exportVonDatum');     // ✅ KORRIGIERT
-    const bisField = document.getElementById('exportBisDatum');     // ✅ KORRIGIERT
+    const vonField = document.getElementById('exportVonDatum');
+    const bisField = document.getElementById('exportBisDatum');
     
     if (vonField) vonField.value = vor30Str;
     if (bisField) bisField.value = heute;
     
     console.log('✅ Daten gesetzt:', vor30Str, 'bis', heute);
-    
+} // ✅ FEHLENDE KLAMMER HINZUGEFÜGT
+
+function closeExportModal() {
+    const modal = document.getElementById('exportModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
 
 function exportVorschau() {
     console.log('📊 Export Vorschau gestartet...');
     
-    // ✅ ALLE MÖGLICHEN IDs PRÜFEN
-    let vonElement = document.getElementById('exportVonDatum') || 
-                     document.getElementById('vonDatum') || 
-                     document.getElementById('von_datum') ||
-                     document.querySelector('input[name="von_datum"]') ||
-                     document.querySelector('input[type="date"]:first-of-type');
-    
-    let bisElement = document.getElementById('exportBisDatum') || 
-                     document.getElementById('bisDatum') || 
-                     document.getElementById('bis_datum') ||
-                     document.querySelector('input[name="bis_datum"]') ||
-                     document.querySelector('input[type="date"]:last-of-type');
-    
-    console.log('🔍 Gefundene Elemente:', {
-        von: vonElement,
-        bis: bisElement,
-        vonId: vonElement ? vonElement.id : 'NICHT GEFUNDEN',
-        bisId: bisElement ? bisElement.id : 'NICHT GEFUNDEN'
-    });
-    
-    // ✅ ALLE DATE-INPUTS ANZEIGEN (DEBUG)
-    const allDateInputs = document.querySelectorAll('input[type="date"]');
-    console.log('📅 Alle Date-Inputs gefunden:', allDateInputs);
-    allDateInputs.forEach((input, index) => {
-        console.log(`Input ${index}:`, {
-            id: input.id,
-            name: input.name,
-            value: input.value,
-            element: input
-        });
-    });
+    const vonElement = document.getElementById('exportVonDatum');
+    const bisElement = document.getElementById('exportBisDatum');
     
     if (!vonElement || !bisElement) {
-        alert('❌ Datum-Felder nicht gefunden!\n\nVon-Element: ' + (vonElement ? 'OK' : 'FEHLT') + '\nBis-Element: ' + (bisElement ? 'OK' : 'FEHLT'));
+        alert('❌ Datum-Felder nicht gefunden!');
         return;
     }
     
     const vonDatum = vonElement.value;
     const bisDatum = bisElement.value;
     
-    console.log(`📅 Gefundene Werte: von=${vonDatum}, bis=${bisDatum}`);
-    
     if (!vonDatum || !bisDatum) {
         alert('⚠️ Bitte beide Daten auswählen!');
         return;
     }
     
-    // ✅ VOLLBERICHT URL
     const url = `/export/vollbericht?von=${vonDatum}&bis=${bisDatum}`;
     console.log(`🚀 Öffne Vollbericht: ${url}`);
     
-    // ✅ MODAL DIREKT SCHLIESSEN (ohne Funktionsaufruf)
-    const modal = document.getElementById('exportModal');
-    if (modal) {
-        modal.style.display = 'none';
-    }
-    
-    // Im gleichen Tab öffnen
+    closeExportModal();
     window.location.href = url;
 }
 
-// ✅ PROJEKT FUNKTIONEN
 function projektErstellen(event) {
     event.preventDefault();
     
@@ -1213,18 +1180,12 @@ function berichtAnzeigen(id) {
     window.open('/projekt/' + id + '/bericht', '_blank');
 }
 
-// ✅ NEUE CHECKBOX FUNKTION
 function toggleProjektAuswahl(checkbox) {
-    console.log('Checkbox geklickt für Projekt:', checkbox.dataset.projektId);
-    
     const selectedCheckboxes = document.querySelectorAll('.projekt-checkbox:checked');
     const count = selectedCheckboxes.length;
-    
-    console.log('Ausgewählte Projekte:', count);
     updateDeleteButtonState(count);
 }
 
-// ✅ DELETE BUTTON UPDATE
 function updateDeleteButtonState(count) {
     const stickyControls = document.getElementById('stickyDeleteControls');
     const countSpan = document.getElementById('selectedCount');
@@ -1242,7 +1203,6 @@ function updateDeleteButtonState(count) {
     }
 }
 
-// ✅ PROJEKTE LÖSCHEN
 function projekte_löschen() {
     const selectedCheckboxes = document.querySelectorAll('.projekt-checkbox:checked');
     const projektIds = Array.from(selectedCheckboxes).map(cb => cb.value);
@@ -1252,9 +1212,7 @@ function projekte_löschen() {
         return;
     }
     
-    const message = `Wirklich ${projektIds.length} Projekt(e) löschen?`;
-    
-    if (!confirm(message)) return;
+    if (!confirm(`Wirklich ${projektIds.length} Projekt(e) löschen?`)) return;
     
     fetch('/projekte/bulk-delete', {
         method: 'POST',
@@ -1273,42 +1231,10 @@ function projekte_löschen() {
     .catch(() => alert('❌ Netzwerk-Fehler!'));
 }
 
-// ✅ PROJEKT ÖFFNEN (ohne Umlaut)
-function projektOeffnen(id) {
-    window.location.href = '/projekt/' + id;
-}
-function projektBeenden(projektId) {
-    if (!confirm('Projekt wirklich beenden?')) {
-        return;
-    }
-    
-    // WICHTIG: /projekte/ (nicht /projekt/)
-    fetch(`/projekte/${projektId}/beenden`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            alert(data.message);
-            location.reload();
-        } else {
-            alert(`Fehler: ${data.message}`);
-        }
-    })
-    .catch(error => {
-        console.error('Fehler:', error);
-        alert('Beenden fehlgeschlagen');
-    });
-}
-// ✅ MODAL FUNKTIONEN
 function openModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
         modal.style.display = 'flex';
-        console.log('Modal geöffnet:', modalId);
     }
 }
 
@@ -1316,20 +1242,9 @@ function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
         modal.style.display = 'none';
-        console.log('Modal geschlossen:', modalId);
     }
 }
 
-function showAlert(message, type) {
-    type = type || 'error';
-    const container = document.getElementById('alertContainer');
-    if (container) {
-        container.innerHTML = '<div class="alert alert-' + type + '">' + message + '</div>';
-        setTimeout(() => container.innerHTML = '', 3000);
-    }
-}
-
-// ✅ MANAGEMENT FUNKTIONEN
 function mitarbeiterLöschen(name) {
     if (confirm('Mitarbeiter "' + name + '" löschen?')) {
         fetch('/mitarbeiter/löschen', {
@@ -1364,10 +1279,8 @@ function kundeLöschen(name) {
     }
 }
 
-// ✅ EVENT LISTENERS
+// Event Listeners
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('📄 DOM geladen');
-    
     // Mitarbeiter Form
     const maForm = document.getElementById('mitarbeiterForm');
     if (maForm) {
@@ -1427,7 +1340,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Außerhalb Modal klicken
+    // Modal clicks
     document.querySelectorAll('.modal').forEach(modal => {
         modal.addEventListener('click', function(e) {
             if (e.target === this) {
@@ -1436,42 +1349,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
-// Event-Listener für alle Checkboxen
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.projekt-checkbox').forEach(function(checkbox) {
-        checkbox.addEventListener('change', function(event) {
-            event.stopPropagation();
-            
-            const projektId = this.dataset.projektId;
-            const status = this.dataset.status;
-            
-            // Ihre Logik hier
-            toggleProjektAuswahl(projektId, status);
-        });
-    });
-});
-console.log('✅ ALLE FUNKTIONEN DEFINIERT!');
 
-// ✅ TEST: Funktionen im Window verfügbar machen
-window.openExportModal = openExportModal;
-window.closeExportModal = closeExportModal;
-window.exportVorschau = exportVorschau;
-window.projektErstellen = projektErstellen;
-window.projektÖffnen = projektÖffnen;
-window.berichtAnzeigen = berichtAnzeigen;
-window.toggleProjektAuswahl = toggleProjektAuswahl;
-window.openModal = openModal;
-window.closeModal = closeModal;
-window.mitarbeiterLöschen = mitarbeiterLöschen;
-window.kundeLöschen = kundeLöschen;
-window.closeExportModal = closeExportModal;
-window.openExportModal = openExportModal;
-window.closeExportModal = closeExportModal;
-window.exportVorschau = exportVorschau;
-
-} 
-
-console.log('🚀 SCRIPT KOMPLETT GELADEN!');
+console.log('✅ SCRIPT GELADEN!');
 </script>
 </body>
 </html>
