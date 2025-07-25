@@ -1110,6 +1110,8 @@ function openExportModal() {
     if (bisField) bisField.value = heute;
     
     console.log('✅ Daten gesetzt:', vor30Str, 'bis', heute);
+    // ✅ FEHLENDE FUNKTIONEN INS WINDOW-OBJEKT
+window.closeExportModal = closeExportModal;
 }
 
 function exportVorschau() {
