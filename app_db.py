@@ -538,51 +538,7 @@ def projekt_beenden(projekt_id):
             'status': 'error',
             'message': f'Server-Fehler: {str(e)}'
         }), 500
-    
-@app.route('/projekt/<int:projekt_id>/bericht')
-@login_required
-def projekt_bericht(projekt_id):
-    try:
-        print(f"📊 Bericht für Projekt {projekt_id}")
-        
-        # Datenbankverbindung
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # Projekt-Details abrufen
-        cursor.execute('SELECT id, name, kunde, status FROM projekte WHERE id = %s', (projekt_id,))
-        projekt = cursor.fetchone()
-        
-        if not projekt:
-            conn.close()
-            return "Projekt nicht gefunden", 404
-        
-        # Zeiterfassung für dieses Projekt
-        cursor.execute('''
-            SELECT datum, start_zeit, ende_zeit, minuten, beschreibung 
-            FROM zeiterfassung 
-            WHERE projekt_id = %s 
-            ORDER BY datum DESC, start_zeit DESC
-        ''', (projekt_id,))
-        
-        zeiten = cursor.fetchall()
-        conn.close()
-        
-        # Gesamt-Minuten berechnen
-        gesamt_minuten = sum(zeit[3] or 0 for zeit in zeiten) if zeiten else 0
-        gesamt_stunden = gesamt_minuten / 60
-        
-        return render_template('projekt_bericht.html', 
-                             projekt=projekt,
-                             zeiten=zeiten,
-                             gesamt_minuten=gesamt_minuten,
-                             gesamt_stunden=round(gesamt_stunden, 2))
-                             
-    except Exception as e:
-        print(f"❌ Fehler beim Bericht: {e}")
-        import traceback
-        traceback.print_exc()
-        return f"Fehler beim Laden des Berichts: {e}", 500
+   #mitarbeiter hinzufügen
 @app.route('/mitarbeiter/hinzufügen', methods=['POST'])
 @login_required
 def mitarbeiter_hinzufügen():
@@ -601,7 +557,7 @@ def mitarbeiter_hinzufügen():
         return jsonify({'status': 'error', 'message': 'Mitarbeiter existiert bereits'})
     finally:
         conn.close()
-
+#Mitarbeiter löschen
 @app.route('/mitarbeiter/löschen', methods=['POST'])
 @login_required
 def mitarbeiter_löschen():
@@ -612,7 +568,7 @@ def mitarbeiter_löschen():
     conn.commit()
     conn.close()
     return jsonify({'status': 'success'})
-
+#Kunde hinzufügen
 @app.route('/kunde/hinzufügen', methods=['POST'])
 @login_required
 def kunde_hinzufügen():
@@ -631,7 +587,7 @@ def kunde_hinzufügen():
         return jsonify({'status': 'error', 'message': 'Kunde existiert bereits'})
     finally:
         conn.close()
-
+#Kunde löschen
 @app.route('/kunde/löschen', methods=['POST'])
 @login_required
 def kunde_löschen():
@@ -642,7 +598,7 @@ def kunde_löschen():
     conn.commit()
     conn.close()
     return jsonify({'status': 'success'})
-
+#Projekte löschen
 @app.route('/projekte/löschen', methods=['POST'])
 @login_required
 def projekte_löschen():
@@ -658,6 +614,7 @@ def projekte_löschen():
     conn.close()
     
     return jsonify({'status': 'success'})
+#Export-Vorschau
 @app.route('/export/vorschau', methods=['POST'])
 @login_required
 def export_vorschau():
@@ -820,6 +777,7 @@ def export_vorschau():
             'status': 'error', 
             'message': f'Server-Fehler: {str(e)}'
         })
+#Projekt Bericht für ein Projekt
 @app.route('/projekt/<int:projekt_id>/bericht')
 @login_required
 def projekt_bericht(projekt_id):
@@ -967,7 +925,7 @@ def projekt_bericht(projekt_id):
         import traceback
         traceback.print_exc()
         return f"<h1>❌ Fehler beim Laden des Berichts</h1><p>{str(e)}</p><pre>{traceback.format_exc()}</pre>", 500
-    
+ #Gesamt-Bericht mit sicherer ID-Extraktion   
 @app.route('/gesamt-bericht')
 def gesamt_bericht():
     """Gesamt-Bericht mit sicherer ID-Extraktion"""
@@ -1468,7 +1426,7 @@ def gesamt_bericht():
         import traceback
         traceback.print_exc()
         return f"<h1>Fehler: {str(e)}</h1><pre>{traceback.format_exc()}</pre>", 500
-    
+ #Projekte  löschen   
 @app.route('/projekte/bulk-delete', methods=['POST'])
 @login_required
 def projekte_bulk_delete():
@@ -1501,6 +1459,7 @@ def projekte_bulk_delete():
         
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
+    
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port, debug=False)
