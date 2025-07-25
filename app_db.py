@@ -1459,7 +1459,60 @@ def projekte_bulk_delete():
         
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
-    
+ @app.route('/debug/projekte')
+@login_required
+def debug_projekte():
+    try:
+        von_datum_str = request.args.get('von', '2024-01-01')
+        bis_datum_str = request.args.get('bis', '2025-12-31')
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 1. ALLE PROJEKTE
+        cursor.execute('SELECT id, name, kunde, status, beendet_am FROM projekte ORDER BY id')
+        alle_projekte = cursor.fetchall()
+        
+        # 2. NUR BEENDETE
+        cursor.execute("SELECT id, name, kunde, status, beendet_am FROM projekte WHERE status = 'beendet'")
+        beendete_projekte = cursor.fetchall()
+        
+        # 3. MIT DATUM-FILTER
+        cursor.execute('''
+            SELECT id, name, kunde, status, beendet_am
+            FROM projekte 
+            WHERE status = 'beendet' 
+            AND beendet_am IS NOT NULL
+            AND DATE(beendet_am) BETWEEN %s AND %s
+        ''', (von_datum_str, bis_datum_str))
+        beendete_mit_datum = cursor.fetchall()
+        
+        conn.close()
+        
+        html = f'''<h1>🔍 DEBUG PROJEKTE</h1>
+        <p><strong>Von:</strong> {von_datum_str} | <strong>Bis:</strong> {bis_datum_str}</p>
+        
+        <h2>📊 STATISTIKEN:</h2>
+        <ul>
+            <li>Alle Projekte: {len(alle_projekte)}</li>
+            <li>Beendete Projekte: {len(beendete_projekte)}</li>
+            <li>Beendete mit Datum: {len(beendete_mit_datum)}</li>
+        </ul>
+        
+        <h2>📋 ALLE PROJEKTE:</h2>
+        <table border="1" cellpadding="5">
+            <tr><th>ID</th><th>Name</th><th>Kunde</th><th>Status</th><th>Beendet am</th></tr>'''
+        
+        for p in alle_projekte:
+            html += f'<tr><td>{p["id"]}</td><td>{p["name"]}</td><td>{p["kunde"]}</td><td><strong>{p["status"]}</strong></td><td>{p["beendet_am"]}</td></tr>'
+        
+        html += '''</table>
+        <br><button onclick="window.close()">Schließen</button>'''
+        
+        return html
+        
+    except Exception as e:
+        return f"<h1>Fehler: {str(e)}</h1>"   
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port, debug=False)
