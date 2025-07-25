@@ -1115,9 +1115,45 @@ function openExportModal() {
 function exportVorschau() {
     console.log('📊 Export Vorschau gestartet...');
     
-    // ✅ KORREKTE IDs VERWENDEN
-    const vonDatum = document.getElementById('exportVonDatum').value;     
-    const bisDatum = document.getElementById('exportBisDatum').value;     
+    // ✅ ALLE MÖGLICHEN IDs PRÜFEN
+    let vonElement = document.getElementById('exportVonDatum') || 
+                     document.getElementById('vonDatum') || 
+                     document.getElementById('von_datum') ||
+                     document.querySelector('input[name="von_datum"]') ||
+                     document.querySelector('input[type="date"]:first-of-type');
+    
+    let bisElement = document.getElementById('exportBisDatum') || 
+                     document.getElementById('bisDatum') || 
+                     document.getElementById('bis_datum') ||
+                     document.querySelector('input[name="bis_datum"]') ||
+                     document.querySelector('input[type="date"]:last-of-type');
+    
+    console.log('🔍 Gefundene Elemente:', {
+        von: vonElement,
+        bis: bisElement,
+        vonId: vonElement ? vonElement.id : 'NICHT GEFUNDEN',
+        bisId: bisElement ? bisElement.id : 'NICHT GEFUNDEN'
+    });
+    
+    // ✅ ALLE DATE-INPUTS ANZEIGEN (DEBUG)
+    const allDateInputs = document.querySelectorAll('input[type="date"]');
+    console.log('📅 Alle Date-Inputs gefunden:', allDateInputs);
+    allDateInputs.forEach((input, index) => {
+        console.log(`Input ${index}:`, {
+            id: input.id,
+            name: input.name,
+            value: input.value,
+            element: input
+        });
+    });
+    
+    if (!vonElement || !bisElement) {
+        alert('❌ Datum-Felder nicht gefunden!\n\nVon-Element: ' + (vonElement ? 'OK' : 'FEHLT') + '\nBis-Element: ' + (bisElement ? 'OK' : 'FEHLT'));
+        return;
+    }
+    
+    const vonDatum = vonElement.value;
+    const bisDatum = bisElement.value;
     
     console.log(`📅 Gefundene Werte: von=${vonDatum}, bis=${bisDatum}`);
     
@@ -1127,39 +1163,6 @@ function exportVorschau() {
     }
     
     // ✅ VOLLBERICHT URL
-    const url = `/export/vollbericht?von=${vonDatum}&bis=${bisDatum}`;
-    console.log(`🚀 Öffne Vollbericht: ${url}`);
-    
-    // Modal schließen
-    closeExportModal();
-    
-    // Im gleichen Tab öffnen
-    window.location.href = url;
-}
-function closeExportModal() {
-    console.log('🔒 Modal schließen...');
-    const modal = document.getElementById('exportModal');
-    if (modal) {
-        modal.style.display = 'none';
-        console.log('✅ Modal geschlossen');
-    }
-}
-
-function exportVorschau() {
-    console.log('📊 Export Vorschau gestartet...');
-    
-    // ✅ KORREKTE FELD-IDs VERWENDEN
-    const vonDatum = document.getElementById('vonDatum').value;     // ✅ KORRIGIERT
-    const bisDatum = document.getElementById('bisDatum').value;     // ✅ KORRIGIERT
-    
-    console.log(`📅 Gefundene Werte: von=${vonDatum}, bis=${bisDatum}`);
-    
-    if (!vonDatum || !bisDatum) {
-        alert('⚠️ Bitte beide Daten auswählen!');
-        return;
-    }
-    
-    // ✅ VOLLBERICHT URL MIT DEBUG
     const url = `/export/vollbericht?von=${vonDatum}&bis=${bisDatum}`;
     console.log(`🚀 Öffne Vollbericht: ${url}`);
     
