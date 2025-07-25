@@ -1459,7 +1459,8 @@ def projekte_bulk_delete():
         
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
- @app.route('/debug/projekte')
+    
+@app.route('/debug/projekte')
 @login_required
 def debug_projekte():
     try:
@@ -1512,7 +1513,7 @@ def debug_projekte():
         return html
         
     except Exception as e:
-        return f"<h1>Fehler: {str(e)}</h1>"   
+        return f"<h1>Fehler: {str(e)}</h1>"
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port, debug=False)
