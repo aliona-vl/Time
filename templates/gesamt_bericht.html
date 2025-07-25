@@ -151,6 +151,28 @@
             font-size: 0.8em;
         }
 
+        /* ✅ MITARBEITER LISTE */
+        .mitarbeiter-liste {
+            margin-top: 10px;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 3px solid var(--success);
+        }
+
+        .mitarbeiter-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 0.75em;
+        }
+
+        .mitarbeiter-item:last-child {
+            border-bottom: none;
+        }
+
         /* ✅ BUTTON STYLES */
         .action-buttons {
             text-align: center;
@@ -315,26 +337,17 @@
             <div class="report-subtitle">Zeitraum: {{ von_datum }} bis {{ bis_datum }}</div>
         </div>
 
-        <!-- ✅ SUMMARY LEISTE WIE IN VORSCHAU -->
+        <!-- ✅ SUMMARY LEISTE -->
         <div class="summary-bar" style="background: var(--primary-blue); color: white; padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 20px; font-weight: bold; font-size: 14px;">
             📊 {{ projekte|length }} Projekt(e) | 
             ⏱️ 
             {% set alle_zeit = 0 %}
             {% for projekt in projekte %}
-                {% set projekt_zeit = projekt.teilbereiche.besprechung.gesamt_minuten + projekt.teilbereiche.zeichnung.gesamt_minuten + projekt.teilbereiche.aufmass.gesamt_minuten %}
-                {% set alle_zeit = alle_zeit + projekt_zeit %}
+                {% set alle_zeit = alle_zeit + projekt.gesamt_minuten %}
             {% endfor %}
             
-            {% if alle_zeit < 60 %}
-                {{ alle_zeit }}min
-            {% else %}
-                {{ alle_zeit // 60 }}h {{ alle_zeit % 60 }}min
-            {% endif %}
+            {{ format_minuten(alle_zeit) }}
         </div>
-
-        <!-- ✅ MOBILE PROJECT LIST -->
-        <div class="report-section">
-            <!-- ... rest der Projekte ... -->
 
         <!-- ✅ MOBILE PROJECT LIST -->
         <div class="report-section">
@@ -347,14 +360,14 @@
                         <div>
                             <div class="projekt-name">{{ projekt.name }}</div>
                             <div class="projekt-kunde">👤 {{ projekt.kunde }}</div>
+                            {% if projekt.beendet_am %}
+                            <div style="font-size: 0.75em; color: var(--text-light);">
+                                📅 Beendet: {{ projekt.beendet_am.strftime('%d.%m.%Y') }}
+                            </div>
+                            {% endif %}
                         </div>
                         <div class="projekt-gesamt">
-                            {% set gesamt = projekt.teilbereiche.besprechung.gesamt_minuten + projekt.teilbereiche.zeichnung.gesamt_minuten + projekt.teilbereiche.aufmass.gesamt_minuten %}
-                            {% if gesamt < 60 %}
-                                {{ gesamt }}min
-                            {% else %}
-                                {{ gesamt // 60 }}h {{ gesamt % 60 }}min
-                            {% endif %}
+                            {{ format_minuten(projekt.gesamt_minuten) }}
                         </div>
                     </div>
                     
@@ -363,34 +376,47 @@
                         <div class="teilbereich-item">
                             <div class="teilbereich-name">💬 Besprechung</div>
                             <div class="teilbereich-zeit">
-                                {% if projekt.teilbereiche.besprechung.gesamt_minuten < 60 %}
-                                    {{ projekt.teilbereiche.besprechung.gesamt_minuten }}min
-                                {% else %}
-                                    {{ projekt.teilbereiche.besprechung.gesamt_minuten // 60 }}h {{ projekt.teilbereiche.besprechung.gesamt_minuten % 60 }}min
-                                {% endif %}
+                                {% set besprechung_min = 0 %}
+                                {% for mitarbeiter, stats in projekt.mitarbeiter_stats.items() %}
+                                    {% set besprechung_min = besprechung_min + stats.besprechung %}
+                                {% endfor %}
+                                {{ format_minuten(besprechung_min) }}
                             </div>
                         </div>
                         <div class="teilbereich-item">
                             <div class="teilbereich-name">📐 Zeichnung</div>
                             <div class="teilbereich-zeit">
-                                {% if projekt.teilbereiche.zeichnung.gesamt_minuten < 60 %}
-                                    {{ projekt.teilbereiche.zeichnung.gesamt_minuten }}min
-                                {% else %}
-                                    {{ projekt.teilbereiche.zeichnung.gesamt_minuten // 60 }}h {{ projekt.teilbereiche.zeichnung.gesamt_minuten % 60 }}min
-                                {% endif %}
+                                {% set zeichnung_min = 0 %}
+                                {% for mitarbeiter, stats in projekt.mitarbeiter_stats.items() %}
+                                    {% set zeichnung_min = zeichnung_min + stats.zeichnung %}
+                                {% endfor %}
+                                {{ format_minuten(zeichnung_min) }}
                             </div>
                         </div>
                         <div class="teilbereich-item">
                             <div class="teilbereich-name">📏 Aufmaß</div>
                             <div class="teilbereich-zeit">
-                                {% if projekt.teilbereiche.aufmass.gesamt_minuten < 60 %}
-                                    {{ projekt.teilbereiche.aufmass.gesamt_minuten }}min
-                                {% else %}
-                                    {{ projekt.teilbereiche.aufmass.gesamt_minuten // 60 }}h {{ projekt.teilbereiche.aufmass.gesamt_minuten % 60 }}min
-                                {% endif %}
+                                {% set aufmass_min = 0 %}
+                                {% for mitarbeiter, stats in projekt.mitarbeiter_stats.items() %}
+                                    {% set aufmass_min = aufmass_min + stats.aufmass %}
+                                {% endfor %}
+                                {{ format_minuten(aufmass_min) }}
                             </div>
                         </div>
                     </div>
+
+                    <!-- ✅ MITARBEITER LISTE -->
+                    {% if projekt.mitarbeiter_stats %}
+                    <div class="mitarbeiter-liste">
+                        <div style="font-weight: bold; margin-bottom: 5px; font-size: 0.8em;">👥 Mitarbeiter:</div>
+                        {% for mitarbeiter, stats in projekt.mitarbeiter_stats.items() %}
+                        <div class="mitarbeiter-item">
+                            <span><strong>{{ mitarbeiter }}</strong></span>
+                            <span>{{ format_minuten(stats.gesamt) }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
                 {% endfor %}
             {% else %}
@@ -400,9 +426,8 @@
             {% endif %}
         </div>
 
-        <!-- ✅ PROJEKT-LISTE + BUTTONS (KEIN AUTO-PRINT) -->
+        <!-- ✅ BUTTONS -->
         <div class="action-buttons">
-            
             <button onclick="window.print()" class="btn btn-print">
                 🖨️ Drucken
             </button>
@@ -410,14 +435,11 @@
             <button onclick="goBack()" class="btn btn-back">
                 ← Zurück
             </button>
-            
         </div>
     </div>
 
     <script>
-        // ✅ ZURÜCK FUNKTION
         function goBack() {
-            // Versuche verschiedene Wege zurück zu gehen
             if (window.history.length > 1) {
                 window.history.back();
             } else {
@@ -425,17 +447,12 @@
             }
         }
 
-        // ✅ ESC-TASTE FÜR ZURÜCK
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 goBack();
             }
         });
 
-        // ✅ KEIN AUTO-PRINT - NUR MANUELL ÜBER BUTTON
-        // Du siehst alles, druckst nur wenn du willst
-
-        // ✅ MOBILE-FRIENDLY OPTIMIERUNGEN
         if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches) {
             document.addEventListener('DOMContentLoaded', function() {
                 const meta = document.createElement('meta');
