@@ -18,7 +18,7 @@ app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(16))
 # Team-Code Definition
 TEAM_CODE = 'RAUSCH2025'
 TEILBEREICHE = ['besprechung', 'zeichnung', 'aufmass']
-
+#Login
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):

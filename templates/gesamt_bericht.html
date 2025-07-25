@@ -376,11 +376,13 @@
                         <div class="teilbereich-item">
                             <div class="teilbereich-name">💬 Besprechung</div>
                             <div class="teilbereich-zeit">
-                                {% set besprechung_min = 0 %}
-                                {% for mitarbeiter, stats in projekt.mitarbeiter_stats.items() %}
-                                    {% set besprechung_min = besprechung_min + stats.besprechung %}
-                                {% endfor %}
-                                {{ format_minuten(besprechung_min) }}
+                                {% set gesamt_besprechung = 0 %}
+                {% for projekt in projekte %}
+                    {% for mitarbeiter, stats in projekt.mitarbeiter_stats.items() %}
+                        {% set gesamt_besprechung = gesamt_besprechung + stats.besprechung %}
+                    {% endfor %}
+                {% endfor %}
+                {{ format_minuten(gesamt_besprechung) }}
                             </div>
                         </div>
                         <div class="teilbereich-item">
