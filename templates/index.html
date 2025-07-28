@@ -519,7 +519,7 @@
         </div>
     </div>
 
-    <>
+    <script>
         function showAlert(message, type = 'error') {
             const alertContainer = document.getElementById('alertContainer');
             alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
@@ -662,8 +662,6 @@
                 schliesseTeamInfo();
             }
         });
-
-    <script>
 function showPasswordReset() {
     document.getElementById('passwordResetModal').style.display = 'block';
 }
