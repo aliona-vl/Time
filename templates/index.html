@@ -408,6 +408,42 @@
                 <a href="#" onclick="toggleForm()">Noch kein Konto? Registrieren</a>
             </div>
         </div>
+        <!-- ✅ PASSWORT VERGESSEN LINK -->
+<div style="text-align: center; margin-top: 15px;">
+    <a href="#" onclick="showPasswordReset()" style="color: #3498db; text-decoration: none; font-size: 14px;">
+        🔐 Passwort vergessen?
+    </a>
+</div>
+
+<!-- ✅ PASSWORT RESET MODAL -->
+<div id="passwordResetModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; backdrop-filter: blur(5px);">
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 15px; width: 90%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+        <h3 style="text-align: center; color: #4a5568; margin-bottom: 20px;">🔐 Passwort vergessen</h3>
+        
+        <form id="passwordResetForm">
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #4a5568;">
+                    E-Mail Adresse:
+                </label>
+                <input type="email" name="email" required 
+                       style="width: 100%; padding: 12px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 16px; box-sizing: border-box;"
+                       placeholder="Ihre registrierte E-Mail">
+            </div>
+            
+            <button type="submit" 
+                    style="width: 100%; padding: 12px; background: #3498db; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-bottom: 15px; transition: all 0.3s ease;">
+                📧 Reset-Link anfordern
+            </button>
+            
+            <button type="button" onclick="closePasswordReset()" 
+                    style="width: 100%; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; transition: all 0.3s ease;">
+                Abbrechen
+            </button>
+        </form>
+        
+        <div id="resetMessage" style="margin-top: 15px; text-align: center;"></div>
+    </div>
+</div>
 
         <!-- ✅ COMPACT REGISTER FORM -->
         <div id="registerForm">
@@ -483,7 +519,7 @@
         </div>
     </div>
 
-    <script>
+    <>
         function showAlert(message, type = 'error') {
             const alertContainer = document.getElementById('alertContainer');
             alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
@@ -626,6 +662,112 @@
                 schliesseTeamInfo();
             }
         });
-    </script>
+
+    <script>
+function showPasswordReset() {
+    document.getElementById('passwordResetModal').style.display = 'block';
+}
+
+function closePasswordReset() {
+    document.getElementById('passwordResetModal').style.display = 'none';
+    document.getElementById('resetMessage').innerHTML = '';
+}
+
+// Modal schließen bei Klick außerhalb
+document.getElementById('passwordResetModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closePasswordReset();
+    }
+});
+
+document.getElementById('passwordResetForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const submitBtn = this.querySelector('button[type="submit"]');
+    
+    submitBtn.disabled = true;
+    submitBtn.textContent = '⏳ Wird verarbeitet...';
+    
+    fetch('/passwort-vergessen', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        const messageDiv = document.getElementById('resetMessage');
+        
+        if (data.status === 'success') {
+            messageDiv.innerHTML = '<div style="color: #28a745; font-weight: bold; padding: 10px; background: #d4edda; border-radius: 5px;">✅ ' + data.message + '</div>';
+            
+            // FÜR ENTWICKLUNG: Reset-Link anzeigen
+            if (data.dev_link) {
+                messageDiv.innerHTML += '<div style="margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 5px;"><strong>Entwicklung:</strong><br><a href="' + data.dev_link + '" style="color: #3498db; word-break: break-all;">→ Reset-Link öffnen</a></div>';
+            }
+        } else {
+            messageDiv.innerHTML = '<div style="color: #dc3545; font-weight: bold; padding: 10px; background: #f8d7da; border-radius: 5px;">❌ ' + data.message + '</div>';
+        }
+    })
+    .catch(error => {
+        document.getElementById('resetMessage').innerHTML = '<div style="color: #dc3545; font-weight: bold; padding: 10px; background: #f8d7da; border-radius: 5px;">❌ Verbindungsfehler</div>';
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '📧 Reset-Link anfordern';
+    });
+});
+function showPasswordReset() {
+    document.getElementById('passwordResetModal').style.display = 'block';
+}
+
+function closePasswordReset() {
+    document.getElementById('passwordResetModal').style.display = 'none';
+    document.getElementById('resetMessage').innerHTML = '';
+}
+
+// Modal schließen bei Klick außerhalb
+document.getElementById('passwordResetModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closePasswordReset();
+    }
+});
+
+document.getElementById('passwordResetForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const submitBtn = this.querySelector('button[type="submit"]');
+    
+    submitBtn.disabled = true;
+    submitBtn.textContent = '⏳ Wird verarbeitet...';
+    
+    fetch('/passwort-vergessen', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        const messageDiv = document.getElementById('resetMessage');
+        
+        if (data.status === 'success') {
+            messageDiv.innerHTML = '<div style="color: #28a745; font-weight: bold; padding: 10px; background: #d4edda; border-radius: 5px;">✅ ' + data.message + '</div>';
+            
+            // FÜR ENTWICKLUNG: Reset-Link anzeigen
+            if (data.dev_link) {
+                messageDiv.innerHTML += '<div style="margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 5px;"><strong>Entwicklung:</strong><br><a href="' + data.dev_link + '" style="color: #3498db; word-break: break-all;">→ Reset-Link öffnen</a></div>';
+            }
+        } else {
+            messageDiv.innerHTML = '<div style="color: #dc3545; font-weight: bold; padding: 10px; background: #f8d7da; border-radius: 5px;">❌ ' + data.message + '</div>';
+        }
+    })
+    .catch(error => {
+        document.getElementById('resetMessage').innerHTML = '<div style="color: #dc3545; font-weight: bold; padding: 10px; background: #f8d7da; border-radius: 5px;">❌ Verbindungsfehler</div>';
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '📧 Reset-Link anfordern';
+    });
+});
+</script>
 </body>
 </html>

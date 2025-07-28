@@ -9,6 +9,10 @@ import pytz
 import json
 import os
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify, render_template_string
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import uuid
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
@@ -1618,7 +1622,332 @@ def export_vollbericht():
         import traceback
         traceback.print_exc()
         return f"<h1>❌ Fehler beim Vollbericht</h1><p>{str(e)}</p><pre>{traceback.format_exc()}</pre>", 500
+# ✅ PASSWORT-RESET ANFRAGE
+@app.route('/passwort-vergessen', methods=['POST'])
+def passwort_vergessen():
+    email = request.form['email'].strip().lower()
     
+    benutzer = load_benutzer()
+    if email not in benutzer:
+        return jsonify({'status': 'error', 'message': 'E-Mail nicht gefunden'})
+    
+    # Reset-Token generieren
+    reset_token = str(uuid.uuid4())
+    
+    # Token in Datenbank speichern (5 Minuten gültig)
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Reset-Token Tabelle erstellen falls nicht vorhanden
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS password_resets (
+            id SERIAL PRIMARY KEY,
+            email VARCHAR(255) NOT NULL,
+            token VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            used BOOLEAN DEFAULT FALSE
+        )
+    ''')
+    
+    # Alten Token löschen
+    cursor.execute('DELETE FROM password_resets WHERE email = %s', (email,))
+    
+    # Neuen Token einfügen
+    cursor.execute('''
+        INSERT INTO password_resets (email, token) 
+        VALUES (%s, %s)
+    ''', (email, reset_token))
+    
+    conn.commit()
+    conn.close()
+    
+    # Reset-Link erstellen
+    reset_link = f"http://localhost:8080/passwort-reset?token={reset_token}"
+    
+    try:
+        # FÜR ENTWICKLUNG: Reset-Link direkt zurückgeben
+        print(f"📧 Reset-Link für {email}: {reset_link}")
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Reset-Link wurde erstellt!',
+            'dev_link': reset_link  # NUR FÜR ENTWICKLUNG!
+        })
+        
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': 'Fehler beim Erstellen des Reset-Links'})
+
+# ✅ PASSWORT-RESET SEITE
+@app.route('/passwort-reset')
+def passwort_reset_seite():
+    token = request.args.get('token')
+    
+    if not token:
+        return redirect('/')
+    
+    # Token prüfen
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT email FROM password_resets 
+        WHERE token = %s 
+        AND used = FALSE 
+        AND created_at > NOW() - INTERVAL '5 minutes'
+    ''', (token,))
+    
+    result = cursor.fetchone()
+    conn.close()
+    
+    if not result:
+        return render_template_string('''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Ungültiger Link</title>
+            <style>
+                body {
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    background: linear-gradient(135deg, #4a5568 0%, #3498db 100%);
+                    min-height: 100vh;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 20px;
+                }
+                .container {
+                    background: white;
+                    padding: 30px;
+                    border-radius: 15px;
+                    text-align: center;
+                    box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h2>❌ Ungültiger oder abgelaufener Reset-Link</h2>
+                <p>Der Link ist ungültig oder bereits älter als 5 Minuten.</p>
+                <a href="/" style="color: #3498db; text-decoration: none; font-weight: bold;">→ Zurück zur Anmeldung</a>
+            </div>
+        </body>
+        </html>
+        ''')
+    
+    return render_template_string('''
+    <!DOCTYPE html>
+    <html lang="de">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Neues Passwort - RAUSCH</title>
+        <style>
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #4a5568 0%, #3498db 100%);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+            }
+            .form-container {
+                background: white;
+                padding: 30px;
+                border-radius: 15px;
+                box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+                width: 100%;
+                max-width: 400px;
+            }
+            h2 { 
+                color: #4a5568; 
+                text-align: center; 
+                margin-bottom: 20px; 
+                font-size: 1.5em;
+            }
+            .form-group {
+                margin-bottom: 15px;
+            }
+            label {
+                display: block;
+                margin-bottom: 5px;
+                font-weight: bold;
+                color: #4a5568;
+            }
+            input {
+                width: 100%;
+                padding: 12px;
+                border: 2px solid #dee2e6;
+                border-radius: 8px;
+                font-size: 16px;
+                box-sizing: border-box;
+                transition: border-color 0.3s ease;
+            }
+            input:focus {
+                border-color: #3498db;
+                outline: none;
+            }
+            button {
+                width: 100%;
+                padding: 12px;
+                background: #3498db;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 16px;
+                font-weight: bold;
+                cursor: pointer;
+                transition: all 0.3s ease;
+            }
+            button:hover { 
+                background: #2980b9; 
+                transform: translateY(-1px);
+            }
+            .error { 
+                color: #dc3545; 
+                font-size: 14px; 
+                margin-top: 10px; 
+                padding: 10px;
+                background: #f8d7da;
+                border-radius: 5px;
+            }
+            .success { 
+                color: #155724; 
+                font-size: 14px; 
+                margin-top: 10px; 
+                padding: 10px;
+                background: #d4edda;
+                border-radius: 5px;
+            }
+            .back-link {
+                text-align: center;
+                margin-top: 20px;
+            }
+            .back-link a {
+                color: #3498db;
+                text-decoration: none;
+                font-weight: bold;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="form-container">
+            <h2>🔐 Neues Passwort setzen</h2>
+            <form id="resetForm">
+                <input type="hidden" name="token" value="{{ token }}">
+                
+                <div class="form-group">
+                    <label>Neues Passwort:</label>
+                    <input type="password" name="password" required minlength="8" 
+                           placeholder="Mindestens 8 Zeichen">
+                </div>
+                
+                <div class="form-group">
+                    <label>Passwort bestätigen:</label>
+                    <input type="password" name="password_confirm" required 
+                           placeholder="Passwort wiederholen">
+                </div>
+                
+                <button type="submit">✅ Passwort ändern</button>
+                
+                <div id="message"></div>
+                
+                <div class="back-link">
+                    <a href="/">← Zurück zur Anmeldung</a>
+                </div>
+            </form>
+        </div>
+
+        <script>
+            document.getElementById('resetForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                const password = formData.get('password');
+                const confirm = formData.get('password_confirm');
+                
+                if (password !== confirm) {
+                    document.getElementById('message').innerHTML = 
+                        '<div class="error">❌ Passwörter stimmen nicht überein</div>';
+                    return;
+                }
+                
+                if (password.length < 8) {
+                    document.getElementById('message').innerHTML = 
+                        '<div class="error">❌ Passwort muss mindestens 8 Zeichen haben</div>';
+                    return;
+                }
+                
+                fetch('/passwort-reset-confirm', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        document.getElementById('message').innerHTML = 
+                            '<div class="success">✅ ' + data.message + '</div>';
+                        setTimeout(() => {
+                            window.location.href = '/';
+                        }, 2000);
+                    } else {
+                        document.getElementById('message').innerHTML = 
+                            '<div class="error">❌ ' + data.message + '</div>';
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('message').innerHTML = 
+                        '<div class="error">❌ Verbindungsfehler</div>';
+                });
+            });
+        </script>
+    </body>
+    </html>
+    ''', token=token)
+
+# ✅ PASSWORT-RESET BESTÄTIGUNG
+@app.route('/passwort-reset-confirm', methods=['POST'])
+def passwort_reset_confirm():
+    token = request.form['token']
+    password = request.form['password']
+    
+    if len(password) < 8:
+        return jsonify({'status': 'error', 'message': 'Passwort muss mindestens 8 Zeichen haben'})
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Token prüfen und E-Mail holen
+    cursor.execute('''
+        SELECT email FROM password_resets 
+        WHERE token = %s 
+        AND used = FALSE 
+        AND created_at > NOW() - INTERVAL '5 minutes'
+    ''', (token,))
+    
+    result = cursor.fetchone()
+    
+    if not result:
+        conn.close()
+        return jsonify({'status': 'error', 'message': 'Ungültiger oder abgelaufener Token'})
+    
+    email = result['email']
+    
+    # Passwort in Benutzer-Datei aktualisieren
+    benutzer = load_benutzer()
+    if email in benutzer:
+        benutzer[email]['password_hash'] = hash_password(password)
+        save_benutzer(email, benutzer[email])
+    
+    # Token als verwendet markieren
+    cursor.execute('UPDATE password_resets SET used = TRUE WHERE token = %s', (token,))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({
+        'status': 'success',
+        'message': 'Passwort erfolgreich geändert! Sie werden weitergeleitet...'
+    })
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port, debug=False)
