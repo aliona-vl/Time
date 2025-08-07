@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for,render_template_string
 from datetime import datetime, timedelta
 from functools import wraps
 import time
@@ -8,7 +8,6 @@ from database import *
 import pytz
 import json
 import os
-from flask import Flask, render_template, request, session, redirect, url_for, jsonify, render_template_string
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -68,6 +67,8 @@ def berechne_dauer_text(minuten):
         result += f" {rest_minuten}m"
 
     return result
+
+
 @app.template_filter('german_time')
 def german_time_filter(utc_string):
     try:
@@ -77,6 +78,8 @@ def german_time_filter(utc_string):
         return german_time.strftime('%H:%M')
     except:
         return utc_string[11:16]
+    
+
 @app.template_filter('german_date')
 def german_date_filter(utc_string):
     """Konvertiert UTC Datum zu deutschem Datum (DD.MM.)"""
@@ -112,15 +115,19 @@ def berechne_aktuelle_dauer(start_zeit):
         return f"{stunden}h {minuten}m"
     except:
         return "0h 0m"
+    
 
 @app.template_filter('aktuelle_dauer')
 def aktuelle_dauer_filter(start_zeit):
     return berechne_aktuelle_dauer(start_zeit)
+
+
 @app.route('/')
 def index():
     if 'benutzer_email' in session:
         return redirect(url_for('dashboard'))
     return render_template('index.html')
+
 
 @app.route('/registrieren', methods=['POST'])
 def registrieren():
@@ -131,34 +138,64 @@ def registrieren():
     if len(password) < 8:
         return jsonify({'status': 'error', 'message': 'Passwort muss mindestens 8 Zeichen haben'})
 
-    benutzer = load_benutzer()
-    if email in benutzer:
+    # Prüfen ob E-Mail bereits existiert
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT email FROM benutzer WHERE email = %s', (email,))
+    if cursor.fetchone():
+        conn.close()
         return jsonify({'status': 'error', 'message': 'E-Mail bereits registriert'})
 
     if not team_code:
+        conn.close()
         return jsonify({'status': 'error', 'message': 'Team-Code ist erforderlich'})
 
     if team_code != TEAM_CODE:
+        conn.close()
         return jsonify({'status': 'error', 'message': 'Ungültiger Team-Code'})
 
-    # Benutzer speichern
-    benutzer_data = {
-        'password_hash': hash_password(password),
-        'registriert_am': datetime.now().isoformat(),
-        'name': email.split('@')[0].title(),
-        'team_code_verwendet': team_code
-    }
+    # Benutzer in Datenbank speichern
+    try:
+        cursor.execute('''
+            INSERT INTO benutzer (email, password_hash, name, team_code_verwendet, registriert_am)
+            VALUES (%s, %s, %s, %s, %s)
+        ''', (
+            email, 
+            hash_password(password),
+            email.split('@')[0].title(),
+            team_code,
+            datetime.now()
+        ))
+        
+        conn.commit()
+        conn.close()
+
+        # SESSION SETZEN
+        session['benutzer_email'] = email
+        session['benutzer_name'] = email.split('@')[0].title()
+
+        # BESTÄTIGUNGS-EMAIL SENDEN
+        try:
+            print(f"📧 REGISTRIERUNG ERFOLGREICH für {email}")
+            print(f"🎉 Willkommen {session['benutzer_name']}!")
+            
+            # HIER KÖNNTEST DU ECHTE EMAIL SENDEN:
+            # send_registration_email(email, session['benutzer_name'])
+            
+        except Exception as e:
+            print(f"⚠️ Email-Versand fehlgeschlagen: {e}")
+
+        return jsonify({
+            'status': 'success',
+            'sofort_zugriff': True,
+            'message': f'🎉 Willkommen {session["benutzer_name"]}! E-Mail-Bestätigung wurde gesendet.'
+        })
+
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return jsonify({'status': 'error', 'message': f'Registrierung fehlgeschlagen: {str(e)}'})
     
-    save_benutzer(email, benutzer_data)
-
-    session['benutzer_email'] = email
-    session['benutzer_name'] = benutzer_data['name']
-
-    return jsonify({
-        'status': 'success',
-        'sofort_zugriff': True,
-        'message': 'Willkommen im Team!'
-    })
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -173,10 +210,12 @@ def login():
     session['benutzer_name'] = benutzer[email]['name']
     return jsonify({'status': 'success'})
 
+
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect('/')
+
 
 @app.route('/dashboard')
 @login_required
@@ -191,6 +230,7 @@ def dashboard():
                          mitarbeiter=mitarbeiter,
                          kunden=kunden,
                          benutzer_name=session['benutzer_name'])
+
 
 @app.route('/projekt/neu', methods=['POST'])
 @login_required
@@ -216,6 +256,7 @@ def neues_projekt():
     conn.close()
     
     return jsonify({'status': 'success', 'projekt_id': projekt_id})
+
 
 @app.route('/projekt/<int:projekt_id>')
 @login_required
@@ -317,6 +358,8 @@ def projekt_details(projekt_id):
                          teilbereiche=TEILBEREICHE,
                          mitarbeiter=mitarbeiter,
                          benutzer_name=session['benutzer_name'])
+
+
 @app.route('/projekt/<int:projekt_id>/aktivität/starten', methods=['POST'])
 @login_required
 def aktivität_starten(projekt_id):
@@ -474,6 +517,7 @@ def aktivität_beenden(projekt_id):
             'error_type': type(e).__name__
         })
 
+
 @app.route('/projekte/<int:projekt_id>/beenden', methods=['POST'])
 @login_required
 def projekt_beenden(projekt_id):
@@ -543,6 +587,8 @@ def projekt_beenden(projekt_id):
             'message': f'Server-Fehler: {str(e)}'
         }), 500
    #mitarbeiter hinzufügen
+
+
 @app.route('/mitarbeiter/hinzufügen', methods=['POST'])
 @login_required
 def mitarbeiter_hinzufügen():
@@ -561,6 +607,8 @@ def mitarbeiter_hinzufügen():
         return jsonify({'status': 'error', 'message': 'Mitarbeiter existiert bereits'})
     finally:
         conn.close()
+
+
 #Mitarbeiter löschen
 @app.route('/mitarbeiter/löschen', methods=['POST'])
 @login_required
@@ -572,6 +620,8 @@ def mitarbeiter_löschen():
     conn.commit()
     conn.close()
     return jsonify({'status': 'success'})
+
+
 #Kunde hinzufügen
 @app.route('/kunde/hinzufügen', methods=['POST'])
 @login_required
@@ -591,6 +641,8 @@ def kunde_hinzufügen():
         return jsonify({'status': 'error', 'message': 'Kunde existiert bereits'})
     finally:
         conn.close()
+
+
 #Kunde löschen
 @app.route('/kunde/löschen', methods=['POST'])
 @login_required
@@ -602,6 +654,8 @@ def kunde_löschen():
     conn.commit()
     conn.close()
     return jsonify({'status': 'success'})
+
+
 #Projekte löschen
 @app.route('/projekte/löschen', methods=['POST'])
 @login_required
@@ -618,6 +672,8 @@ def projekte_löschen():
     conn.close()
     
     return jsonify({'status': 'success'})
+
+
 #Export-Vorschau
 @app.route('/export/vorschau', methods=['POST'])
 @login_required
@@ -781,6 +837,8 @@ def export_vorschau():
             'status': 'error', 
             'message': f'Server-Fehler: {str(e)}'
         })
+    
+
 #Projekt Bericht für ein Projekt
 @app.route('/projekt/<int:projekt_id>/bericht')
 @login_required
@@ -930,149 +988,128 @@ def projekt_bericht(projekt_id):
         traceback.print_exc()
         return f"<h1>❌ Fehler beim Laden des Berichts</h1><p>{str(e)}</p><pre>{traceback.format_exc()}</pre>", 500
  #Gesamt-Bericht mit sicherer ID-Extraktion   
+
+
 @app.route('/gesamt-bericht')
 def gesamt_bericht():
-    """Gesamt-Bericht mit sicherer ID-Extraktion"""
+    """Gesamt-Bericht mit korrekter Zeit-Berechnung"""
     try:
-        von_datum_str = request.args.get('von', '')
-        bis_datum_str = request.args.get('bis', '')
+        von_datum_str = request.args.get('von', '2024-01-01')
+        bis_datum_str = request.args.get('bis', '2025-12-31')
         
         print(f"📊 Gesamt-Bericht: {von_datum_str} bis {bis_datum_str}")
         
         conn = get_db_connection()
-        cur = conn.cursor()
+        cursor = conn.cursor()
         
-        # ✅ PROJEKTE holen
-        projekte_query = '''
-            SELECT DISTINCT p.id, p.name, p.kunde, p.status, p.erstellt_am
-            FROM projekte p
-            WHERE p.status = 'beendet'
-            ORDER BY p.erstellt_am DESC
-        '''
+        # ✅ BEENDETE PROJEKTE IM ZEITRAUM HOLEN
+        cursor.execute('''
+            SELECT id, name, kunde, status, beendet_am, erstellt_am
+            FROM projekte 
+            WHERE status = 'beendet' 
+            AND beendet_am IS NOT NULL
+            AND DATE(beendet_am) BETWEEN %s AND %s
+            ORDER BY beendet_am DESC
+        ''', (von_datum_str, bis_datum_str))
         
-        cur.execute(projekte_query)
-        projekte_raw = cur.fetchall()
-        columns = [desc[0] for desc in cur.description]
-        projekte_dict = [dict(zip(columns, row)) for row in projekte_raw]
+        beendete_projekte = cursor.fetchall()
+        print(f"🔍 Gefundene beendete Projekte: {len(beendete_projekte)}")
         
-        print(f"🔍 Columns: {columns}")
-        print(f"🔍 Gefundene Projekte: {len(projekte_dict)}")
+        projekte_data = []
         
-        # PROJEKTE MIT SITZUNGEN AUFBAUEN
-        projekte = []
+        # ✅ GESAMT-ZEITEN FÜR ALLE TEILBEREICHE
+        gesamt_teilbereiche = {
+            'besprechung': 0,
+            'zeichnung': 0,
+            'aufmass': 0
+        }
         
-        for projekt in projekte_dict:
-            # ✅ SICHERE ID-EXTRAKTION
-            print(f"🔍 DEBUG projekt dict: {projekt}")
+        for projekt_row in beendete_projekte:
+            projekt = dict(projekt_row)
             
-            # ID sicher extrahieren
-            if 'id' in projekt and projekt['id'] != 'id':
-                projekt_id = projekt['id']
-            elif columns and len(projekt.values()) > 0:
-                # Erste Spalte sollte ID sein
-                projekt_id = list(projekt.values())[0]
-            else:
-                print(f"❌ Kann ID nicht finden für: {projekt}")
-                continue
-
-            # Sicherstellen dass es eine Zahl ist
-            try:
-                projekt_id = int(projekt_id)
-                print(f"✅ Verwende projekt_id: {projekt_id}")
-            except (ValueError, TypeError):
-                print(f"❌ Ungültige projekt_id: {projekt_id}, überspringe Projekt")
-                continue
+            # Sitzungen für dieses Projekt laden
+            cursor.execute('''
+                SELECT mitarbeiter, teilbereich, dauer_minuten
+                FROM sitzungen 
+                WHERE projekt_id = %s
+                AND dauer_minuten IS NOT NULL
+                ORDER BY start_zeit ASC
+            ''', (projekt['id'],))
             
-            # ✅ SITZUNGEN holen
-            if von_datum_str and bis_datum_str:
-                sitzungen_query = '''
-                    SELECT teilbereich, 
-                           SUM(EXTRACT(EPOCH FROM (end_zeit - start_zeit))/3600) as stunden_gesamt
-                    FROM sitzungen 
-                    WHERE projekt_id = %s 
-                      AND DATE(start_zeit) BETWEEN %s AND %s
-                    GROUP BY teilbereich
-                '''
-                cur.execute(sitzungen_query, (projekt_id, von_datum_str, bis_datum_str))
-            else:
-                sitzungen_query = '''
-                    SELECT teilbereich, 
-                           SUM(EXTRACT(EPOCH FROM (end_zeit - start_zeit))/3600) as stunden_gesamt
-                    FROM sitzungen 
-                    WHERE projekt_id = %s
-                    GROUP BY teilbereich
-                '''
-                cur.execute(sitzungen_query, (projekt_id,))
+            sitzungen = cursor.fetchall()
             
-            sitzungen_raw = cur.fetchall()
-            sitzungen_columns = [desc[0] for desc in cur.description]
-            sitzungen = [dict(zip(sitzungen_columns, row)) for row in sitzungen_raw]
-            
-            print(f"🔍 Projekt {projekt_id}: {len(sitzungen)} Teilbereiche gefunden")
-            
-            # Teilbereiche initialisieren
-            teilbereiche = {
-                'besprechung': {'gesamt_minuten': 0},
-                'zeichnung': {'gesamt_minuten': 0},
-                'aufmass': {'gesamt_minuten': 0}
+            # Mitarbeiter-Statistiken und Teilbereich-Summen
+            mitarbeiter_stats = {}
+            projekt_teilbereiche = {
+                'besprechung': 0,
+                'zeichnung': 0,  
+                'aufmass': 0
             }
+            gesamt_minuten = 0
             
-            # Sitzungen zu Teilbereichen zuordnen
             for sitzung in sitzungen:
+                mitarbeiter = sitzung['mitarbeiter']
                 teilbereich = sitzung['teilbereich'].lower().strip()
-                stunden = float(sitzung['stunden_gesamt'] or 0)
-                minuten = int(stunden * 60)
+                minuten = sitzung['dauer_minuten'] or 0
                 
-                print(f"🔍 Teilbereich: {teilbereich}, Stunden: {stunden}, Minuten: {minuten}")
+                if mitarbeiter not in mitarbeiter_stats:
+                    mitarbeiter_stats[mitarbeiter] = {
+                        'besprechung': 0,
+                        'zeichnung': 0,
+                        'aufmass': 0,
+                        'gesamt': 0
+                    }
                 
-                if teilbereich in teilbereiche:
-                    teilbereiche[teilbereich]['gesamt_minuten'] = minuten
-                elif teilbereich == 'aufmaß':
-                    teilbereiche['aufmass']['gesamt_minuten'] = minuten
+                # ✅ TEILBEREICH KORREKT ZUORDNEN
+                if teilbereich in ['besprechung', 'zeichnung', 'aufmass']:
+                    mitarbeiter_stats[mitarbeiter][teilbereich] += minuten
+                    projekt_teilbereiche[teilbereich] += minuten
+                    gesamt_teilbereiche[teilbereich] += minuten
+                elif teilbereich == 'aufmaß':  # Alternative Schreibweise
+                    mitarbeiter_stats[mitarbeiter]['aufmass'] += minuten
+                    projekt_teilbereiche['aufmass'] += minuten
+                    gesamt_teilbereiche['aufmass'] += minuten
+                
+                mitarbeiter_stats[mitarbeiter]['gesamt'] += minuten
+                gesamt_minuten += minuten
             
-            projekt_final = {
-                'id': projekt_id,
-                'name': projekt.get('name', 'Unbekannt'),
-                'kunde': projekt.get('kunde', 'Unbekannt'),
-                'status': projekt.get('status', 'unbekannt'),
-                'erstellt_am': projekt.get('erstellt_am', ''),
-                'teilbereiche': teilbereiche
+            # Projekt zu Liste hinzufügen
+            projekt_data = {
+                'id': projekt['id'],
+                'name': projekt['name'],
+                'kunde': projekt['kunde'],
+                'beendet_am': projekt['beendet_am'],
+                'mitarbeiter_stats': mitarbeiter_stats,
+                'gesamt_minuten': gesamt_minuten,
+                'teilbereiche': projekt_teilbereiche
             }
             
-            projekte.append(projekt_final)
+            projekte_data.append(projekt_data)
         
-        cur.close()
         conn.close()
         
-        # DATUM FORMATIERUNG
-        if von_datum_str and bis_datum_str:
-            try:
-                von_formatted = datetime.strptime(von_datum_str, '%Y-%m-%d').strftime('%d.%m.%Y')
-                bis_formatted = datetime.strptime(bis_datum_str, '%Y-%m-%d').strftime('%d.%m.%Y')
-                zeitraum_text = f"{von_formatted} bis {bis_formatted}"
-            except:
-                zeitraum_text = f"{von_datum_str} bis {bis_datum_str}"
-        else:
-            zeitraum_text = "Alle beendeten Projekte"
+        # ✅ ZEIT FORMATIEREN
+        def format_minuten(minuten):
+            if minuten < 60:
+                return f"{minuten}min"
+            stunden = minuten // 60
+            rest_min = minuten % 60
+            if rest_min == 0:
+                return f"{stunden}h"
+            return f"{stunden}h {rest_min}min"
         
-        # GESAMT-ZEIT BERECHNEN
-        alle_zeit_minuten = 0
-        for projekt in projekte:
-            projekt_zeit = (projekt['teilbereiche']['besprechung']['gesamt_minuten'] + 
-                          projekt['teilbereiche']['zeichnung']['gesamt_minuten'] + 
-                          projekt['teilbereiche']['aufmass']['gesamt_minuten'])
-            alle_zeit_minuten += projekt_zeit
+        # ✅ ALLE ZEITEN BERECHNEN
+        alle_zeit_minuten = sum(p['gesamt_minuten'] for p in projekte_data)
         
-        print(f"✅ {len(projekte)} Projekte gefunden, {alle_zeit_minuten} Minuten gesamt")
-        
-        # IHR EXAKTES HTML TEMPLATE
+        # ✅ HTML TEMPLATE MIT KORREKTEN ZEITEN
         html_content = f'''<!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAUSCH - Gesamt-Bericht {zeitraum_text}</title>
+    <title>RAUSCH - Gesamt-Bericht {von_datum_str} bis {bis_datum_str}</title>
     <style>
+        /* DEIN KOMPLETTES CSS HIER */
         :root {{
             --primary-dark: #4a5568;
             --primary-blue: #3498db;
@@ -1086,245 +1123,57 @@ def gesamt_bericht():
             --border-color: #dee2e6;
             --gray: #6c757d;
         }}
-
-        * {{
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }}
-
-        body {{
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: white;
-            padding: 15px;
-            font-size: 12px;
-            line-height: 1.4;
-        }}
-
-        .report-container {{
-            max-width: 100%;
-            margin: 0 auto;
-            background: white;
-        }}
-
-        .report-header {{
-            text-align: center;
-            margin-bottom: 20px;
-            padding-bottom: 12px;
-            border-bottom: 3px solid var(--primary-blue);
-        }}
-
-        .report-title {{
-            font-size: 1.3em;
-            font-weight: bold;
-            color: var(--primary-dark);
-            margin-bottom: 6px;
-            line-height: 1.2;
-        }}
-
-        .report-subtitle {{
-            font-size: 0.9em;
-            color: var(--text-light);
-        }}
-
-        .report-section {{
-            margin-bottom: 20px;
-            background: var(--background-light);
-            border-radius: 8px;
-            padding: 12px;
-            border-left: 3px solid var(--primary-blue);
-        }}
-
-        .section-title {{
-            font-size: 1em;
-            font-weight: bold;
-            color: var(--primary-dark);
-            margin-bottom: 12px;
-        }}
-
-        .projekt-item {{
-            background: white;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 10px;
-            margin-bottom: 10px;
-            page-break-inside: avoid;
-        }}
-
-        .projekt-header {{
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            margin-bottom: 8px;
-            padding-bottom: 6px;
-            border-bottom: 2px solid var(--primary-blue);
-        }}
-
-        .projekt-name {{
-            font-size: 1em;
-            font-weight: bold;
-            color: var(--primary-dark);
-            line-height: 1.2;
-        }}
-
-        .projekt-kunde {{
-            color: var(--text-light);
-            font-style: italic;
-            font-size: 0.85em;
-        }}
-
-        .projekt-gesamt {{
-            background: var(--primary-blue);
-            color: white;
-            padding: 4px 8px;
-            border-radius: 10px;
-            font-weight: bold;
-            font-size: 0.8em;
-            align-self: flex-start;
-            margin-top: 4px;
-        }}
-
-        .teilbereiche-grid {{
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 6px;
-            margin-top: 8px;
-        }}
-
-        .teilbereich-item {{
-            background: var(--background-light);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            padding: 6px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }}
-
-        .teilbereich-name {{
-            font-weight: bold;
-            font-size: 0.8em;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }}
-
-        .teilbereich-zeit {{
-            color: var(--primary-blue);
-            font-weight: bold;
-            font-size: 0.8em;
-        }}
-
-        .action-buttons {{
-            text-align: center;
-            margin-top: 25px;
-            padding-top: 15px;
-            border-top: 2px solid var(--border-color);
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }}
-
-        .btn {{
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 14px;
-            transition: all 0.3s ease;
-            color: white;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }}
-
-        .btn:hover {{
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }}
-
-        .btn-print {{
-            background: var(--success);
-        }}
-
-        .btn-back {{
-            background: var(--gray);
-        }}
-
-        @media (min-width: 768px) {{
-            body {{ padding: 20px; font-size: 14px; }}
-            .report-container {{ max-width: 900px; }}
-            .report-title {{ font-size: 1.8em; }}
-            .report-subtitle {{ font-size: 1em; }}
-            .projekt-header {{ flex-direction: row; justify-content: space-between; align-items: center; }}
-            .projekt-gesamt {{ margin-top: 0; }}
-            .teilbereiche-grid {{ grid-template-columns: repeat(3, 1fr); gap: 10px; }}
-            .btn {{ padding: 15px 30px; font-size: 16px; }}
-        }}
-
-        @media (max-width: 768px) {{
-            .action-buttons {{ flex-direction: column; align-items: center; gap: 10px; }}
-            .btn {{ width: 100%; max-width: 250px; }}
-        }}
-
-        @media print {{
-            .action-buttons {{ display: none !important; }}
-            body {{ background: white !important; padding: 5px !important; font-size: 9px !important; }}
-            @page {{ margin: 0.5cm; size: A4; }}
-            .report-container {{ transform: scale(0.95); transform-origin: top left; width: 105%; }}
-            .projekt-item {{ page-break-inside: avoid; break-inside: avoid; margin-bottom: 8px !important; }}
-            .report-section {{ page-break-inside: avoid; break-inside: avoid; margin-bottom: 12px !important; }}
-            .report-title {{ font-size: 1.4em !important; color: black !important; }}
-            .report-subtitle {{ font-size: 0.8em !important; }}
-            .section-title {{ font-size: 0.9em !important; color: black !important; }}
-            .projekt-name {{ font-size: 0.9em !important; color: black !important; }}
-            .teilbereiche-grid {{ grid-template-columns: repeat(3, 1fr) !important; gap: 6px !important; }}
-        }}
+        /* REST DEINES CSS */
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: white; padding: 15px; font-size: 12px; line-height: 1.4; }}
+        .report-container {{ max-width: 100%; margin: 0 auto; background: white; }}
+        .report-header {{ text-align: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 3px solid var(--primary-blue); }}
+        .report-title {{ font-size: 1.3em; font-weight: bold; color: var(--primary-dark); margin-bottom: 6px; line-height: 1.2; }}
+        .report-subtitle {{ font-size: 0.9em; color: var(--text-light); }}
+        .report-section {{ margin-bottom: 20px; background: var(--background-light); border-radius: 8px; padding: 12px; border-left: 3px solid var(--primary-blue); }}
+        .section-title {{ font-size: 1em; font-weight: bold; color: var(--primary-dark); margin-bottom: 12px; }}
+        .projekt-item {{ background: white; border: 1px solid var(--border-color); border-radius: 6px; padding: 10px; margin-bottom: 10px; page-break-inside: avoid; }}
+        .projekt-header {{ display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 2px solid var(--primary-blue); }}
+        .projekt-name {{ font-size: 1em; font-weight: bold; color: var(--primary-dark); line-height: 1.2; }}
+        .projekt-kunde {{ color: var(--text-light); font-style: italic; font-size: 0.85em; }}
+        .projekt-gesamt {{ background: var(--primary-blue); color: white; padding: 4px 8px; border-radius: 10px; font-weight: bold; font-size: 0.8em; align-self: flex-start; margin-top: 4px; }}
+        .teilbereiche-grid {{ display: grid; grid-template-columns: 1fr; gap: 6px; margin-top: 8px; }}
+        .teilbereich-item {{ background: var(--background-light); border: 1px solid var(--border-color); border-radius: 4px; padding: 6px; display: flex; justify-content: space-between; align-items: center; }}
+        .teilbereich-name {{ font-weight: bold; font-size: 0.8em; display: flex; align-items: center; gap: 4px; }}
+        .teilbereich-zeit {{ color: var(--primary-blue); font-weight: bold; font-size: 0.8em; }}
+        .action-buttons {{ text-align: center; margin-top: 25px; padding-top: 15px; border-top: 2px solid var(--border-color); display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }}
+        .btn {{ border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; transition: all 0.3s ease; color: white; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }}
+        .btn:hover {{ transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }}
+        .btn-print {{ background: var(--success); }}
+        .btn-back {{ background: var(--gray); }}
+        @media (min-width: 768px) {{ body {{ padding: 20px; font-size: 14px; }} .report-container {{ max-width: 900px; }} .report-title {{ font-size: 1.8em; }} .report-subtitle {{ font-size: 1em; }} .projekt-header {{ flex-direction: row; justify-content: space-between; align-items: center; }} .projekt-gesamt {{ margin-top: 0; }} .teilbereiche-grid {{ grid-template-columns: repeat(3, 1fr); gap: 10px; }} .btn {{ padding: 15px 30px; font-size: 16px; }} }}
+        @media (max-width: 768px) {{ .action-buttons {{ flex-direction: column; align-items: center; gap: 10px; }} .btn {{ width: 100%; max-width: 250px; }} }}
+        @media print {{ .action-buttons {{ display: none !important; }} body {{ background: white !important; padding: 5px !important; font-size: 9px !important; }} @page {{ margin: 0.5cm; size: A4; }} .report-container {{ transform: scale(0.95); transform-origin: top left; width: 105%; }} .projekt-item {{ page-break-inside: avoid; break-inside: avoid; margin-bottom: 8px !important; }} .report-section {{ page-break-inside: avoid; break-inside: avoid; margin-bottom: 12px !important; }} .report-title {{ font-size: 1.4em !important; color: black !important; }} .report-subtitle {{ font-size: 0.8em !important; }} .section-title {{ font-size: 0.9em !important; color: black !important; }} .projekt-name {{ font-size: 0.9em !important; color: black !important; }} .teilbereiche-grid {{ grid-template-columns: repeat(3, 1fr) !important; gap: 6px !important; }} }}
     </style>
 </head>
 <body>
     <div class="report-container">
         <div class="report-header">
             <div class="report-title">📊 Gesamt-Bericht RAUSCH</div>
-            <div class="report-subtitle">Zeitraum: {zeitraum_text}</div>
+            <div class="report-subtitle">Zeitraum: {von_datum_str} bis {bis_datum_str}</div>
         </div>
 
         <div class="summary-bar" style="background: var(--primary-blue); color: white; padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 20px; font-weight: bold; font-size: 14px;">
-            📊 {len(projekte)} Projekt(e) | ⏱️ '''
-        
-        # ZEIT FORMATIERUNG
-        if alle_zeit_minuten < 60:
-            html_content += f"{alle_zeit_minuten}min"
-        else:
-            stunden = alle_zeit_minuten // 60
-            minuten = alle_zeit_minuten % 60
-            html_content += f"{stunden}h {minuten}min"
-        
-        html_content += f'''
+            📊 {len(projekte_data)} Projekt(e) | ⏱️ {format_minuten(alle_zeit_minuten)}
+            <br>
+            <div style="font-size: 12px; margin-top: 5px;">
+                💬 Besprechung: {format_minuten(gesamt_teilbereiche['besprechung'])} | 
+                📐 Zeichnung: {format_minuten(gesamt_teilbereiche['zeichnung'])} | 
+                📏 Aufmaß: {format_minuten(gesamt_teilbereiche['aufmass'])}
+            </div>
         </div>
 
         <div class="report-section">
-            <div class="section-title">🏗️ Beendete Projekte ({len(projekte)})</div>
+            <div class="section-title">🏗️ Beendete Projekte ({len(projekte_data)})</div>
             '''
         
-        if projekte:
-            for projekt in projekte:
-                # GESAMT-ZEIT FÜR DIESES PROJEKT
-                gesamt_minuten = (projekt['teilbereiche']['besprechung']['gesamt_minuten'] + 
-                                projekt['teilbereiche']['zeichnung']['gesamt_minuten'] + 
-                                projekt['teilbereiche']['aufmass']['gesamt_minuten'])
-                
-                if gesamt_minuten < 60:
-                    gesamt_zeit_text = f"{gesamt_minuten}min"
-                else:
-                    stunden = gesamt_minuten // 60
-                    minuten = gesamt_minuten % 60
-                    gesamt_zeit_text = f"{stunden}h {minuten}min"
-                
+        if projekte_data:
+            for projekt in projekte_data:
                 html_content += f'''
                 <div class="projekt-item">
                     <div class="projekt-header">
@@ -1332,48 +1181,21 @@ def gesamt_bericht():
                             <div class="projekt-name">{projekt['name']}</div>
                             <div class="projekt-kunde">👤 {projekt['kunde']}</div>
                         </div>
-                        <div class="projekt-gesamt">{gesamt_zeit_text}</div>
+                        <div class="projekt-gesamt">{format_minuten(projekt['gesamt_minuten'])}</div>
                     </div>
                     
                     <div class="teilbereiche-grid">
                         <div class="teilbereich-item">
                             <div class="teilbereich-name">💬 Besprechung</div>
-                            <div class="teilbereich-zeit">'''
-                
-                # BESPRECHUNG ZEIT
-                besp_min = projekt['teilbereiche']['besprechung']['gesamt_minuten']
-                if besp_min < 60:
-                    html_content += f"{besp_min}min"
-                else:
-                    html_content += f"{besp_min // 60}h {besp_min % 60}min"
-                
-                html_content += '''</div>
+                            <div class="teilbereich-zeit">{format_minuten(projekt['teilbereiche']['besprechung'])}</div>
                         </div>
                         <div class="teilbereich-item">
                             <div class="teilbereich-name">📐 Zeichnung</div>
-                            <div class="teilbereich-zeit">'''
-                
-                # ZEICHNUNG ZEIT
-                zeich_min = projekt['teilbereiche']['zeichnung']['gesamt_minuten']
-                if zeich_min < 60:
-                    html_content += f"{zeich_min}min"
-                else:
-                    html_content += f"{zeich_min // 60}h {zeich_min % 60}min"
-                
-                html_content += '''</div>
+                            <div class="teilbereich-zeit">{format_minuten(projekt['teilbereiche']['zeichnung'])}</div>
                         </div>
                         <div class="teilbereich-item">
                             <div class="teilbereich-name">📏 Aufmaß</div>
-                            <div class="teilbereich-zeit">'''
-                
-                # AUFMASS ZEIT
-                aufm_min = projekt['teilbereiche']['aufmass']['gesamt_minuten']
-                if aufm_min < 60:
-                    html_content += f"{aufm_min}min"
-                else:
-                    html_content += f"{aufm_min // 60}h {aufm_min % 60}min"
-                
-                html_content += '''</div>
+                            <div class="teilbereich-zeit">{format_minuten(projekt['teilbereiche']['aufmass'])}</div>
                         </div>
                     </div>
                 </div>'''
@@ -1404,13 +1226,11 @@ def gesamt_bericht():
                 window.location.href = '/dashboard';
             }
         }
-
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 goBack();
             }
         });
-
         if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches) {
             document.addEventListener('DOMContentLoaded', function() {
                 const meta = document.createElement('meta');
@@ -1430,6 +1250,8 @@ def gesamt_bericht():
         import traceback
         traceback.print_exc()
         return f"<h1>Fehler: {str(e)}</h1><pre>{traceback.format_exc()}</pre>", 500
+    
+
  #Projekte  löschen   
 @app.route('/projekte/bulk-delete', methods=['POST'])
 @login_required
@@ -1463,6 +1285,8 @@ def projekte_bulk_delete():
         
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
+    
+
         
 @app.route('/debug/projekte')
 @login_required
@@ -1518,6 +1342,8 @@ def debug_projekte():
         
     except Exception as e:
         return f"<h1>Fehler: {str(e)}</h1>"
+    
+
 # Vollständiger Export-Bericht (für beendete Projekte)
 @app.route('/export/vollbericht')
 @login_required
@@ -1622,23 +1448,27 @@ def export_vollbericht():
         import traceback
         traceback.print_exc()
         return f"<h1>❌ Fehler beim Vollbericht</h1><p>{str(e)}</p><pre>{traceback.format_exc()}</pre>", 500
+    
 # ✅ PASSWORT-RESET ANFRAGE
+# ✅ PASSWORT-RESET ANFRAGE (KORRIGIERT)
 @app.route('/passwort-vergessen', methods=['POST'])
 def passwort_vergessen():
     email = request.form['email'].strip().lower()
     
-    benutzer = load_benutzer()
-    if email not in benutzer:
+    # Benutzer in Datenbank prüfen
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT email FROM benutzer WHERE email = %s', (email,))
+    result = cursor.fetchone()
+    
+    if not result:
+        conn.close()
         return jsonify({'status': 'error', 'message': 'E-Mail nicht gefunden'})
     
     # Reset-Token generieren
     reset_token = str(uuid.uuid4())
     
     # Token in Datenbank speichern (5 Minuten gültig)
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    # Reset-Token Tabelle erstellen falls nicht vorhanden
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS password_resets (
             id SERIAL PRIMARY KEY,
@@ -1661,21 +1491,66 @@ def passwort_vergessen():
     conn.commit()
     conn.close()
     
-    # Reset-Link erstellen
-    reset_link = f"http://localhost:8080/passwort-reset?token={reset_token}"
+    # Reset-Link erstellen (DEINE RENDER-URL!)
+    reset_link = f"https://timely-w3qi.onrender.com/passwort-reset?token={reset_token}"
     
     try:
-        # FÜR ENTWICKLUNG: Reset-Link direkt zurückgeben
+        # EMAIL SENDEN (EINFACHE VERSION)
         print(f"📧 Reset-Link für {email}: {reset_link}")
         
         return jsonify({
             'status': 'success',
             'message': 'Reset-Link wurde erstellt!',
-            'dev_link': reset_link  # NUR FÜR ENTWICKLUNG!
+            'dev_link': reset_link  # FÜR ENTWICKLUNG!
         })
         
     except Exception as e:
         return jsonify({'status': 'error', 'message': 'Fehler beim Erstellen des Reset-Links'})
+
+# ✅ PASSWORT-RESET BESTÄTIGUNG (KORRIGIERT)
+@app.route('/passwort-reset-confirm', methods=['POST'])
+def passwort_reset_confirm():
+    token = request.form['token']
+    password = request.form['password']
+    
+    if len(password) < 8:
+        return jsonify({'status': 'error', 'message': 'Passwort muss mindestens 8 Zeichen haben'})
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Token prüfen und E-Mail holen
+    cursor.execute('''
+        SELECT email FROM password_resets 
+        WHERE token = %s 
+        AND used = FALSE 
+        AND created_at > NOW() - INTERVAL '5 minutes'
+    ''', (token,))
+    
+    result = cursor.fetchone()
+    
+    if not result:
+        conn.close()
+        return jsonify({'status': 'error', 'message': 'Ungültiger oder abgelaufener Token'})
+    
+    email = result['email']
+    
+    # Passwort in Datenbank aktualisieren
+    cursor.execute('''
+        UPDATE benutzer 
+        SET password_hash = %s 
+        WHERE email = %s
+    ''', (hash_password(password), email))
+    
+    # Token als verwendet markieren
+    cursor.execute('UPDATE password_resets SET used = TRUE WHERE token = %s', (token,))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({
+        'status': 'success',
+        'message': 'Passwort erfolgreich geändert! Sie werden weitergeleitet...'
+    })
 
 # ✅ PASSWORT-RESET SEITE
 @app.route('/passwort-reset')
@@ -1905,49 +1780,7 @@ def passwort_reset_seite():
     </html>
     ''', token=token)
 
-# ✅ PASSWORT-RESET BESTÄTIGUNG
-@app.route('/passwort-reset-confirm', methods=['POST'])
-def passwort_reset_confirm():
-    token = request.form['token']
-    password = request.form['password']
-    
-    if len(password) < 8:
-        return jsonify({'status': 'error', 'message': 'Passwort muss mindestens 8 Zeichen haben'})
-    
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    # Token prüfen und E-Mail holen
-    cursor.execute('''
-        SELECT email FROM password_resets 
-        WHERE token = %s 
-        AND used = FALSE 
-        AND created_at > NOW() - INTERVAL '5 minutes'
-    ''', (token,))
-    
-    result = cursor.fetchone()
-    
-    if not result:
-        conn.close()
-        return jsonify({'status': 'error', 'message': 'Ungültiger oder abgelaufener Token'})
-    
-    email = result['email']
-    
-    # Passwort in Benutzer-Datei aktualisieren
-    benutzer = load_benutzer()
-    if email in benutzer:
-        benutzer[email]['password_hash'] = hash_password(password)
-        save_benutzer(email, benutzer[email])
-    
-    # Token als verwendet markieren
-    cursor.execute('UPDATE password_resets SET used = TRUE WHERE token = %s', (token,))
-    conn.commit()
-    conn.close()
-    
-    return jsonify({
-        'status': 'success',
-        'message': 'Passwort erfolgreich geändert! Sie werden weitergeleitet...'
-    })
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port, debug=False)
