@@ -1,25 +1,41 @@
 import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from urllib.parse import urlparse
 
 def get_db_connection():
     """Stelle Verbindung zur PostgreSQL Datenbank her"""
     try:
-        # Railway automatische DATABASE_URL verwenden
+        # Railway DATABASE_URL parsen
         database_url = os.environ.get('DATABASE_URL')
         
         if database_url:
             print(f"🔗 Nutze DATABASE_URL: {database_url[:50]}...")
-            conn = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
+            
+            # URL parsen für Railway-Format
+            if database_url.startswith('postgresql://'):
+                # Standard psycopg2 Verbindung
+                conn = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
+            else:
+                # Railway-Format parsen
+                url = urlparse(database_url)
+                conn = psycopg2.connect(
+                    host=url.hostname,
+                    database=url.path[1:],  # Remove leading slash
+                    user=url.username,
+                    password=url.password,
+                    port=url.port or 5432,
+                    cursor_factory=RealDictCursor
+                )
         else:
-            # Fallback für lokale Entwicklung
-            print("⚠️  Keine DATABASE_URL gefunden - nutze lokale Verbindung")
+            # Fallback: Einzelne Umgebungsvariablen
+            print("⚠️  Keine DATABASE_URL - nutze Railway Env-Vars")
             conn = psycopg2.connect(
-                host=os.environ.get('DB_HOST', 'localhost'),
-                database=os.environ.get('DB_NAME', 'timetracking'),
-                user=os.environ.get('DB_USER', 'postgres'),
-                password=os.environ.get('DB_PASSWORD', 'password'),
-                port=os.environ.get('DB_PORT', '5432'),
+                host=os.environ.get('PGHOST', 'localhost'),
+                database=os.environ.get('PGDATABASE', 'railway'),
+                user=os.environ.get('PGUSER', 'postgres'),
+                password=os.environ.get('PGPASSWORD', ''),
+                port=os.environ.get('PGPORT', '5432'),
                 cursor_factory=RealDictCursor
             )
         
@@ -28,6 +44,15 @@ def get_db_connection():
         
     except Exception as e:
         print(f"❌ Datenbankverbindung fehlgeschlagen: {e}")
+        
+        # Debug: Zeige verfügbare Env-Vars
+        print("🔍 Verfügbare DB-Variablen:")
+        for key in ['DATABASE_URL', 'PGHOST', 'PGDATABASE', 'PGUSER', 'PGPORT']:
+            value = os.environ.get(key, 'nicht gesetzt')
+            if 'password' in key.lower():
+                value = '***' if value != 'nicht gesetzt' else value
+            print(f"   {key}: {value}")
+        
         raise
 
 def execute_query(query, params=None, fetch=False):
@@ -68,41 +93,17 @@ def init_database():
             kunde VARCHAR(255) NOT NULL,
             ersteller VARCHAR(255) NOT NULL,
             status VARCHAR(50) DEFAULT 'gestoppt',
-            erstellt_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            beendet_am TIMESTAMP NULL,
-            erster_start TIMESTAMP NULL,
-            letzter_start TIMESTAMP NULL
-        )''',
-        
-        '''CREATE TABLE IF NOT EXISTS mitarbeiter (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(255) UNIQUE NOT NULL,
-            erstellt_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )''',
-        
-        '''CREATE TABLE IF NOT EXISTS kunden (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(255) UNIQUE NOT NULL,
             erstellt_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )''',
         
         '''CREATE TABLE IF NOT EXISTS sitzungen (
             id SERIAL PRIMARY KEY,
-            projekt_id INTEGER REFERENCES projekte(id) ON DELETE CASCADE,
+            projekt_id INTEGER REFERENCES projekte(id),
             mitarbeiter VARCHAR(255) NOT NULL,
             teilbereich VARCHAR(100) NOT NULL,
             start_zeit TIMESTAMP NOT NULL,
             end_zeit TIMESTAMP,
-            dauer_minuten INTEGER,
-            erstellt_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )''',
-        
-        '''CREATE TABLE IF NOT EXISTS aktive_sitzungen (
-            id SERIAL PRIMARY KEY,
-            projekt_id INTEGER REFERENCES projekte(id) ON DELETE CASCADE,
-            mitarbeiter VARCHAR(255) NOT NULL,
-            teilbereich VARCHAR(100) NOT NULL,
-            start_zeit TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            dauer_minuten INTEGER
         )''',
         
         '''CREATE TABLE IF NOT EXISTS benutzer (
@@ -110,17 +111,7 @@ def init_database():
             email VARCHAR(255) UNIQUE NOT NULL,
             password_hash VARCHAR(255) NOT NULL,
             name VARCHAR(255) NOT NULL,
-            team_code_verwendet VARCHAR(50),
-            registriert_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            aktiv BOOLEAN DEFAULT TRUE
-        )''',
-        
-        '''CREATE TABLE IF NOT EXISTS password_resets (
-            id SERIAL PRIMARY KEY,
-            email VARCHAR(255) NOT NULL,
-            token VARCHAR(255) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            used BOOLEAN DEFAULT FALSE
+            registriert_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )'''
     ]
     
@@ -130,19 +121,6 @@ def init_database():
         
         for table_sql in tables:
             cursor.execute(table_sql)
-        
-        # Standard-Daten einfügen
-        cursor.execute('''
-            INSERT INTO mitarbeiter (name) 
-            VALUES ('Max Mustermann'), ('Anna Schmidt'), ('Tom Weber')
-            ON CONFLICT (name) DO NOTHING
-        ''')
-        
-        cursor.execute('''
-            INSERT INTO kunden (name) 
-            VALUES ('Mustermann GmbH'), ('Schmidt & Co'), ('Weber Bau')
-            ON CONFLICT (name) DO NOTHING
-        ''')
         
         conn.commit()
         conn.close()
