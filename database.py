@@ -1,230 +1,148 @@
-import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from datetime import datetime
+import os
+import json
 
 def get_db_connection():
-    """PostgreSQL Verbindung"""
-    # Temporärer Fix - ersetzen Sie mit Ihrer echten URL
-    DATABASE_URL = "postgresql://postgres:PEnwkBlmATebcaMQTHGzrvXZFUoATTCY@postgres.railway.internal:5432/railway"
+    """Verbindung zur PostgreSQL-Datenbank auf Render"""
+    try:
+        conn = psycopg2.connect(
+            host=os.environ.get('DB_HOST', 'localhost'),
+            database=os.environ.get('DB_NAME', 'timely'),
+            user=os.environ.get('DB_USER', 'timely_user'),
+            password=os.environ.get('DB_PASSWORD', ''),
+            port=os.environ.get('DB_PORT', '5432'),
+            cursor_factory=RealDictCursor
+        )
+        return conn
+    except Exception as e:
+        print(f"❌ Datenbankverbindung fehlgeschlagen: {e}")
+        raise
 
-    if not DATABASE_URL:
-        # Lokale Entwicklung
-        DATABASE_URL = "postgresql://localhost/rausch_local"
-    
-    conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
-    return conn
-
-def init_database():
-    """Erstellt alle Tabellen"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    # Benutzer Tabelle
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS benutzer (
-            email VARCHAR(255) PRIMARY KEY,
-            password_hash VARCHAR(255) NOT NULL,
-            name VARCHAR(255) NOT NULL,
-            team_code_verwendet VARCHAR(50),
-            registriert_am TIMESTAMP NOT NULL
-        )
-    ''')
-    
-    # Projekte Tabelle
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS projekte (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(500) NOT NULL,
-            kunde VARCHAR(500) NOT NULL,
-            ersteller VARCHAR(255) NOT NULL,
-            status VARCHAR(50) DEFAULT 'gestoppt',
-            erstellt_am TIMESTAMP NOT NULL,
-            erster_start TIMESTAMP,
-            letzter_start TIMESTAMP,
-            beendet_am TIMESTAMP,
-            FOREIGN KEY (ersteller) REFERENCES benutzer (email)
-        )
-    ''')
-    
-    # Aktive Sitzungen Tabelle
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS aktive_sitzungen (
-            id SERIAL PRIMARY KEY,
-            projekt_id INTEGER NOT NULL,
-            mitarbeiter VARCHAR(255) NOT NULL,
-            teilbereich VARCHAR(100) NOT NULL,
-            start_zeit TIMESTAMP NOT NULL,
-            FOREIGN KEY (projekt_id) REFERENCES projekte (id) ON DELETE CASCADE
-        )
-    ''')
-    
-    # Beendete Sitzungen Tabelle
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS sitzungen (
-            id SERIAL PRIMARY KEY,
-            projekt_id INTEGER NOT NULL,
-            mitarbeiter VARCHAR(255) NOT NULL,
-            teilbereich VARCHAR(100) NOT NULL,
-            start_zeit TIMESTAMP NOT NULL,
-            end_zeit TIMESTAMP NOT NULL,
-            dauer_minuten INTEGER NOT NULL,
-            FOREIGN KEY (projekt_id) REFERENCES projekte (id) ON DELETE CASCADE
-        )
-    ''')
-    
-    # Mitarbeiter Tabelle
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS mitarbeiter (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(255) UNIQUE NOT NULL
-        )
-    ''')
-    
-    # Kunden Tabelle
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS kunden (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(500) UNIQUE NOT NULL
-        )
-    ''')
-    
-    conn.commit()
-    
-    # Standard-Daten einfügen
-    insert_default_data(cursor)
-    conn.commit()
-    conn.close()
-    print("✅ Datenbank initialisiert!")
-
-def insert_default_data(cursor):
-    """Fügt Standard-Mitarbeiter und Kunden ein"""
-    standard_mitarbeiter = ['Andreas', 'Mark', 'Fritz', 'Sabine', 'Thomas']
-    standard_kunden = [
-        'Bosch Lollar', 'Buderus Guss GmbH', 'Duktus', 'Fritz Winter',
-        'Geissler', 'Hasenclever', 'Herborner Pumpenfabrik', 'Nowakowski'
-    ]
-    
-    for ma in standard_mitarbeiter:
-        cursor.execute('INSERT INTO mitarbeiter (name) VALUES (%s) ON CONFLICT (name) DO NOTHING', (ma,))
-    
-    for kunde in standard_kunden:
-        cursor.execute('INSERT INTO kunden (name) VALUES (%s) ON CONFLICT (name) DO NOTHING', (kunde,))
-
-# Hilfsfunktionen für die App
 def load_benutzer():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM benutzer')
-    benutzer = {row['email']: dict(row) for row in cursor.fetchall()}
-    conn.close()
-    return benutzer
+    """Lade alle Benutzer aus der Datenbank"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM benutzer')
+        users = cursor.fetchall()
+        conn.close()
+        
+        # Als Dictionary zurückgeben
+        result = {}
+        for user in users:
+            result[user['email']] = dict(user)
+        return result
+    except Exception as e:
+        print(f"❌ Fehler beim Laden der Benutzer: {e}")
+        return {}
 
-def save_benutzer(email, data):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('''
-        INSERT INTO benutzer (email, password_hash, name, team_code_verwendet, registriert_am)
-        VALUES (%s, %s, %s, %s, %s)
-        ON CONFLICT (email) DO UPDATE SET
-        password_hash = EXCLUDED.password_hash,
-        name = EXCLUDED.name,
-        team_code_verwendet = EXCLUDED.team_code_verwendet
-    ''', (email, data['password_hash'], data['name'], 
-          data.get('team_code_verwendet'), data['registriert_am']))
-    conn.commit()
-    conn.close()
-
-def load_mitarbeiter():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT name FROM mitarbeiter ORDER BY name')
-    mitarbeiter = [row['name'] for row in cursor.fetchall()]
-    conn.close()
-    return mitarbeiter
-
-def load_kunden():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT name FROM kunden ORDER BY name')
-    kunden = [row['name'] for row in cursor.fetchall()]
-    conn.close()
-    return kunden
+def save_benutzer(email, benutzer_data):
+    """Speichere einen Benutzer in der Datenbank"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO benutzer (email, password_hash, name, team_code_verwendet, registriert_am)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (email) DO UPDATE SET
+                password_hash = EXCLUDED.password_hash,
+                name = EXCLUDED.name,
+                team_code_verwendet = EXCLUDED.team_code_verwendet
+        ''', (
+            email,
+            benutzer_data['password_hash'],
+            benutzer_data['name'],
+            benutzer_data.get('team_code_verwendet', ''),
+            benutzer_data.get('registriert_am', 'NOW()')
+        ))
+        
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"❌ Fehler beim Speichern des Benutzers: {e}")
+        return False
 
 def load_projekte_for_user(benutzer_email):
-    """Lädt alle Projekte für einen Benutzer"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    # Team-Berechtigung prüfen
-    cursor.execute('SELECT team_code_verwendet FROM benutzer WHERE email = %s', (benutzer_email,))
-    user_data = cursor.fetchone()
-    
-    if user_data and user_data['team_code_verwendet'] == 'RAUSCH2025':
-        cursor.execute('SELECT * FROM projekte ORDER BY erstellt_am DESC')
-    else:
-        cursor.execute('SELECT * FROM projekte WHERE ersteller = %s ORDER BY erstellt_am DESC', (benutzer_email,))
-    
-    projekte = []
-    for projekt_row in cursor.fetchall():
-        projekt = dict(projekt_row)
+    """Lade Projekte für einen Benutzer"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
         
-        # Aktive Sitzungen laden
-        cursor.execute('''
-            SELECT mitarbeiter, teilbereich, start_zeit 
-            FROM aktive_sitzungen 
-            WHERE projekt_id = %s
-        ''', (projekt['id'],))
+        # Team-Code prüfen
+        cursor.execute('SELECT team_code_verwendet FROM benutzer WHERE email = %s', (benutzer_email,))
+        benutzer_info = cursor.fetchone()
+        user_team_code = benutzer_info['team_code_verwendet'] if benutzer_info else None
         
-        aktive_sitzungen = {}
-        for sitzung in cursor.fetchall():
-            aktive_sitzungen[sitzung['mitarbeiter']] = {
-                'teilbereich': sitzung['teilbereich'],
-                'start': sitzung['start_zeit'].isoformat()
+        TEAM_CODE = 'RAUSCH2025'  # Dein Team-Code
+        
+        if user_team_code == TEAM_CODE:
+            # Admin sieht alle Projekte
+            cursor.execute('SELECT * FROM projekte ORDER BY erstellt_am DESC')
+        else:
+            # Normale Benutzer nur ihre eigenen
+            cursor.execute('SELECT * FROM projekte WHERE ersteller = %s ORDER BY erstellt_am DESC', (benutzer_email,))
+        
+        projekte = cursor.fetchall()
+        
+        # Teilbereiche für jedes Projekt laden
+        for projekt in projekte:
+            projekt_id = projekt['id']
+            
+            # Teilbereiche initialisieren
+            projekt['teilbereiche'] = {
+                'besprechung': {'sitzungen': [], 'gesamt_minuten': 0},
+                'zeichnung': {'sitzungen': [], 'gesamt_minuten': 0},
+                'aufmass': {'sitzungen': [], 'gesamt_minuten': 0}
             }
-        projekt['aktive_sitzungen'] = aktive_sitzungen
-        
-        # Teilbereiche laden
-        teilbereiche = {}
-        for tb in ['besprechung', 'zeichnung', 'aufmass']:
+            
+            # Sitzungen laden
             cursor.execute('''
-                SELECT mitarbeiter, start_zeit, end_zeit, dauer_minuten 
+                SELECT teilbereich, SUM(dauer_minuten) as gesamt_minuten
                 FROM sitzungen 
-                WHERE projekt_id = %s AND teilbereich = %s
-                ORDER BY start_zeit DESC
-            ''', (projekt['id'], tb))
+                WHERE projekt_id = %s 
+                GROUP BY teilbereich
+            ''', (projekt_id,))
             
-            sitzungen = []
-            gesamt_minuten = 0
-            
-            for sitzung in cursor.fetchall():
-                sitzung_dict = {
-                    'mitarbeiter': sitzung['mitarbeiter'],
-                    'start': sitzung['start_zeit'].isoformat(),
-                    'end': sitzung['end_zeit'].isoformat(),
-                    'dauer_minuten': sitzung['dauer_minuten']
-                }
-                sitzungen.append(sitzung_dict)
-                gesamt_minuten += sitzung['dauer_minuten']
-            
-            teilbereiche[tb] = {
-                'sitzungen': sitzungen,
-                'gesamt_minuten': gesamt_minuten
-            }
+            teilbereich_summen = cursor.fetchall()
+            for summe in teilbereich_summen:
+                tb = summe['teilbereich'].lower().strip()
+                if tb in projekt['teilbereiche']:
+                    projekt['teilbereiche'][tb]['gesamt_minuten'] = summe['gesamt_minuten'] or 0
+                elif tb == 'aufmaß':
+                    projekt['teilbereiche']['aufmass']['gesamt_minuten'] = summe['gesamt_minuten'] or 0
         
-        projekt['teilbereiche'] = teilbereiche
+        conn.close()
+        return [dict(p) for p in projekte]
         
-        # Datumskonvertierung für Templates
-        if projekt['erstellt_am']:
-            projekt['erstellt_am'] = projekt['erstellt_am'].isoformat()
-        if projekt['beendet_am']:
-            projekt['beendet_am'] = projekt['beendet_am'].isoformat()
-        if projekt['erster_start']:
-            projekt['erster_start'] = projekt['erster_start'].isoformat()
-        if projekt['letzter_start']:
-            projekt['letzter_start'] = projekt['letzter_start'].isoformat()
-            
-        projekte.append(projekt)
-    
-    conn.close()
-    return projekte
+    except Exception as e:
+        print(f"❌ Fehler beim Laden der Projekte: {e}")
+        return []
+
+def load_mitarbeiter():
+    """Lade alle Mitarbeiter"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT name FROM mitarbeiter ORDER BY name')
+        mitarbeiter = cursor.fetchall()
+        conn.close()
+        return [m['name'] for m in mitarbeiter]
+    except Exception as e:
+        print(f"❌ Fehler beim Laden der Mitarbeiter: {e}")
+        return []
+
+def load_kunden():
+    """Lade alle Kunden"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT name FROM kunden ORDER BY name')
+        kunden = cursor.fetchall()
+        conn.close()
+        return [k['name'] for k in kunden]
+    except Exception as e:
+        print(f"❌ Fehler beim Laden der Kunden: {e}")
+        return []
